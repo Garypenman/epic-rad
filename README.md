@@ -13,9 +13,21 @@ Goals :
 7. Automate combinitorial analysis (!!! To be done)
 
 To install just download the code from git and add the path to ROOT_INCLUDE_PATH
+If you do not have the base rad code already installed you can add it as a submodule
 
-      git clone https://github.com/dglazier/rad
-      setenv ROOT_INCLUDE_PATH /to/where/is/rad/include  or  setenv ROOT_INCLUDE_PATH ${ROOT_INCLUDE_PATH}:/to/where/is/rad/include
+      git clone --recurse-submodules https://github.com/dglazier/epic-rad.git
+      setenv EPICRAD /to/where/is/epic-rad
+      setenv RAD ${EPICRAD}/rad
+
+If RAD is installed already you do not need to download the submodule
+
+      git clone https://github.com/dglazier/epic-rad.git
+      setenv EPICRAD /to/where/is/epic-rad
+      setenv RAD /to/where/is/rad
+      
+      setenv ROOT_INCLUDE_PATH ${RAD}/include:${EPICRAD}/include
+      or
+      setenv ROOT_INCLUDE_PATH ${ROOT_INCLUDE_PATH}:${RAD}/include:${EPICRAD}/include
       
   Example code :
 
