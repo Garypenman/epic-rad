@@ -9,6 +9,7 @@
 */
 #include "ElectroIonReaction.h"
 #include "ePICUtilities.h"
+#include "ReactionUtilities.h"
 
 namespace rad{
   namespace config{
@@ -383,10 +384,10 @@ namespace rad{
 	  Filter(Form("bool(%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty() +1); ",(Truth()+"pmag").data(),(Truth()+"theta").data(),(Truth()+"phi").data(),(Truth()+"eta").data(),(Rec()+"pmag").data(),(Rec()+"theta").data(),(Rec()+"phi").data(),(Rec()+"eta").data()),"truthmatch");
  
 	  //add resolution functions
-	  ResolutionFraction("pmag");
-	  Resolution("theta");
-	  Resolution("phi");
-	  Resolution("eta");
+	  reaction::util::ResolutionFraction(this,"pmag");
+	  reaction::util::Resolution(this,"theta");
+	  reaction::util::Resolution(this,"phi");
+	  reaction::util::Resolution(this,"eta");
 
 	}
       }
@@ -419,26 +420,6 @@ namespace rad{
       }
       
 
-      
-      /**
-       * calculate the difference in reconsutructed and truth variables
-       * Case Reconstructed and truth synched via AliasColumnsAndMatchWithMC()
-       */
-      //template<typename T>
-      void Resolution(const string& var){
-	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
-	//   return (rec - tru);
-	// },{string(Rec())+var,string(Truth())+var});
-	Define(string("res_")+var,Form("%s-%s",(Truth()+var).data(),(Rec()+var).data() ));
-      }
-      //template<typename T>
-      void ResolutionFraction(const string& var){
-	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
-	//    return (rec - tru)/tru;
-	// },{Rec()+var,Truth()+var});
-	Define(string("res_")+var,Form("(%s-%s)/%s",(Truth()+var).data(),(Rec()+var).data(),(Truth()+var).data() ));
-      }
-      
       /**
        * Mask tracks that do not have a valid ReconstructedParticleAssociations
        */
