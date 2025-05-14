@@ -46,7 +46,7 @@ namespace rad{
 	
 	
 	if(IsEnd){
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 
 	 rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
 	  // auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF &pz, const ROOT::RVecF &m){
@@ -146,7 +146,7 @@ namespace rad{
 	
 	
 	if(IsEnd){
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 
 	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
 	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
@@ -209,7 +209,7 @@ namespace rad{
 	reaction::util::CountParticles(this,Truth());
 
 	if(IsEnd){
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 
 	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
 	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
@@ -275,7 +275,7 @@ namespace rad{
 	
 	if(IsEnd){
 	  
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 	  //use true masses for each rec track
 	  //i.e. ignore PID
 	  //Must truncate to make sure return array is same size as in array
@@ -333,13 +333,16 @@ namespace rad{
 	}
       }//AliasColumnsAndMatchWithMC
 
-
+      /*
       void RedefineFundamentalAliases(){
 
+	using reaction::util::ColType;
+	
 	for(const auto& col : AliasMap()){
 	  const auto& alias = col.first;
 	  
 	  switch(static_cast<int>(DeduceColumnVectorType(col.second )) ) {
+	  // switch(static_cast<int>(reaction::util::DeduceColumnVectorType(this, col.second )) ) {
 	    
 	  case static_cast<int>(ColType::Undef):
 	    break;
@@ -371,7 +374,7 @@ namespace rad{
 	}
 
       }
-      
+      */
       void PostParticles() override{
 	//once particle are added to vectors
 	//we can calculate additional components
@@ -403,17 +406,17 @@ namespace rad{
     }
       
       template<typename T> 
-	void RedefineFundamental( const string& name ){
+      void RedefineFundamental( const string& name ){
 	
 	auto contains = [](const std::string&  s1,const std::string& s2){
 	  return (s1.find(s2) != std::string::npos);
 	};
 	
 	if(contains(name,"rec") ){
-	  RedefineViaAlias(name,helpers::Reorder<T>,{name.data(),Rec()+"match_id",Truth()+"match_id",Truth()+"n"});
+	  RedefineViaAlias(name,helpers::Reorder<T,UInt_t,UInt_t>,{name.data(),Rec()+"match_id",Truth()+"match_id",Truth()+"n"});
 	  }
 	else if(contains(name,"tru") ){
-	  RedefineViaAlias(name,helpers::Rearrange<T>,{name.data(),Truth()+"final_id"});
+	  RedefineViaAlias(name,helpers::Rearrange<T,UInt_t>,{name.data(),Truth()+"final_id"});
 	  
 	}
 	
