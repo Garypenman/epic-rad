@@ -139,7 +139,7 @@ namespace rad{
 	  strNames.pop_back();//remove last ,
 	  
 	  //make a map of corresponding values
-	  TString mapName = object+member+"_epicdet";
+	  TString mapName = object+member+DoNotWriteTag();
 	  mapName.ReplaceAll(".","_");
 	  Define(mapName,Form("ROOT::RVec<ROOT::RVecF>{%s}",strNames.data()));
 	  //unravel map into synchronised (with ReconstructedParticles ordering)
@@ -157,16 +157,16 @@ namespace rad{
       /**
        * do not write columns containing "_epicdet"
        */
-      void RemoveSnapshotColumns(std::vector<string>& cols) override{
+      // void RemoveSnapshotColumns(std::vector<string>& cols) override{
 
-	ePICReaction::RemoveSnapshotColumns(cols);
-	
-	cols.erase( std::remove_if( cols.begin(), cols.end(),
-			       []( const string& col ) -> bool
-			       { return col.find("_epicdet") != std::string::npos; } ),
-		    cols.end() );
-	
-      }
+      // 	ePICReaction::RemoveSnapshotColumns(cols);
+      // 	/* moved to ConfigReaction
+      // 	cols.erase( std::remove_if( cols.begin(), cols.end(),
+      // 			       []( const string& col ) -> bool
+      // 			       { return col.find("_epicdet") != std::string::npos; } ),
+      // 		    cols.end() );
+      // 	*/
+      // }
   
     private:
       
