@@ -9,6 +9,7 @@
 */
 #include "ElectroIonReaction.h"
 #include "ePICUtilities.h"
+#include "ReactionUtilities.h"
 
 namespace rad{
   namespace config{
@@ -45,7 +46,7 @@ namespace rad{
 	
 	
 	if(IsEnd){
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 
 	 rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
 	  // auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF &pz, const ROOT::RVecF &m){
@@ -145,7 +146,7 @@ namespace rad{
 	
 	
 	if(IsEnd){
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 
 	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
 	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
@@ -208,7 +209,7 @@ namespace rad{
 	reaction::util::CountParticles(this,Truth());
 
 	if(IsEnd){
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 
 	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
 	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
@@ -274,7 +275,7 @@ namespace rad{
 	
 	if(IsEnd){
 	  
-	  RedefineFundamentalAliases();
+	  reaction::util::RedefineFundamentalAliases(this);
 	  //use true masses for each rec track
 	  //i.e. ignore PID
 	  //Must truncate to make sure return array is same size as in array
@@ -332,13 +333,16 @@ namespace rad{
 	}
       }//AliasColumnsAndMatchWithMC
 
-
+      /*
       void RedefineFundamentalAliases(){
 
+	using reaction::util::ColType;
+	
 	for(const auto& col : AliasMap()){
 	  const auto& alias = col.first;
 	  
 	  switch(static_cast<int>(DeduceColumnVectorType(col.second )) ) {
+	  // switch(static_cast<int>(reaction::util::DeduceColumnVectorType(this, col.second )) ) {
 	    
 	  case static_cast<int>(ColType::Undef):
 	    break;
@@ -370,7 +374,7 @@ namespace rad{
 	}
 
       }
-      
+      */
       void PostParticles() override{
 	//once particle are added to vectors
 	//we can calculate additional components
@@ -383,10 +387,10 @@ namespace rad{
 	  Filter(Form("bool(%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty() +1); ",(Truth()+"pmag").data(),(Truth()+"theta").data(),(Truth()+"phi").data(),(Truth()+"eta").data(),(Rec()+"pmag").data(),(Rec()+"theta").data(),(Rec()+"phi").data(),(Rec()+"eta").data()),"truthmatch");
  
 	  //add resolution functions
-	  ResolutionFraction("pmag");
-	  Resolution("theta");
-	  Resolution("phi");
-	  Resolution("eta");
+	  reaction::util::ResolutionFraction(this,"pmag");
+	  reaction::util::Resolution(this,"theta");
+	  reaction::util::Resolution(this,"phi");
+	  reaction::util::Resolution(this,"eta");
 
 	}
       }
@@ -402,46 +406,27 @@ namespace rad{
     }
       
       template<typename T> 
-	void RedefineFundamental( const string& name ){
+      void RedefineFundamental( const string& name ){
 	
 	auto contains = [](const std::string&  s1,const std::string& s2){
 	  return (s1.find(s2) != std::string::npos);
 	};
 	
 	if(contains(name,"rec") ){
-	  RedefineViaAlias(name,helpers::Reorder<T>,{name.data(),Rec()+"match_id",Truth()+"match_id",Truth()+"n"});
+	  RedefineViaAlias(name,helpers::Reorder<T,UInt_t,UInt_t>,{name.data(),Rec()+"match_id",Truth()+"match_id",Truth()+"n"});
 	  }
 	else if(contains(name,"tru") ){
-	  RedefineViaAlias(name,helpers::Rearrange<T>,{name.data(),Truth()+"final_id"});
+	  RedefineViaAlias(name,helpers::Rearrange<T,UInt_t>,{name.data(),Truth()+"final_id"});
 	  
 	}
 	
       }
       
-
-      
-      /**
-       * calculate the difference in reconsutructed and truth variables
-       * Case Reconstructed and truth synched via AliasColumnsAndMatchWithMC()
-       */
-      //template<typename T>
-      void Resolution(const string& var){
-	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
-	//   return (rec - tru);
-	// },{string(Rec())+var,string(Truth())+var});
-	Define(string("res_")+var,Form("%s-%s",(Truth()+var).data(),(Rec()+var).data() ));
-      }
-      //template<typename T>
-      void ResolutionFraction(const string& var){
-	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
-	//    return (rec - tru)/tru;
-	// },{Rec()+var,Truth()+var});
-	Define(string("res_")+var,Form("(%s-%s)/%s",(Truth()+var).data(),(Rec()+var).data(),(Truth()+var).data() ));
-      }
       
       /**
        * Mask tracks that do not have a valid ReconstructedParticleAssociations
        */
+      /*
       void MaskMCMatch(){
 	//define function to create and apply mask for rec or tru
 	auto match = [this](const string& type){
@@ -458,10 +443,10 @@ namespace rad{
 			 return mask;
 		       },{type+"_match_id",type+"_pid"} );
 	};//end of match lambda
-	
+       
 	match(Rec());
 	match(Truth());
-      }
+      }*/
 
       void SetBeamsFromMC(Long64_t nrows=100){
 	_useBeamsFromMC=true;

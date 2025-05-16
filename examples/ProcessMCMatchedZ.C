@@ -11,8 +11,6 @@
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
-inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0,0,99.9339,0.938272};}
-inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0,0,-10.007,0.000510999};}
 
 void ProcessMCMatchedZ(){
   using namespace rad::names::data_type; //for Rec(), Truth()
