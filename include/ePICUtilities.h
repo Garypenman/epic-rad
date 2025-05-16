@@ -151,6 +151,13 @@ namespace rad{
       py[idx]=a.Y();
       pz[idx]=a.z();
     }
-
+    
+    //might need to rework this later since it relies on podio.
+    auto FindObjID() {
+      return [](const std::vector<podio::ObjectID>& objidx) -> int {
+	return objidx[0].index;
+      };
+    }
+    
   }
 }
