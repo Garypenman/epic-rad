@@ -24,7 +24,9 @@ If RAD is installed already you do not need to download the submodule
       git clone https://github.com/dglazier/epic-rad.git
       setenv EPICRAD /to/where/is/epic-rad
       setenv RAD /to/where/is/rad
-      
+
+In either case you then need to add the include path to ROOT_INCLUDE_PATH so the files are visibel in an interactive root session.
+
       setenv ROOT_INCLUDE_PATH ${RAD}/include:${EPICRAD}/include
       or
       setenv ROOT_INCLUDE_PATH ${ROOT_INCLUDE_PATH}:${RAD}/include:${EPICRAD}/include
