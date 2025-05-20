@@ -69,7 +69,9 @@ namespace rad{
 	Reaction()->setBranchAlias("TaggerTrackerTracks.momentum.z","tagger_pz");
 	//empty parts string as not dependent on others
 
-	Reaction()->Define(Rec()+"tagger",Form("rad::epic::ParticleLowQ2Electron(tagger_px,tagger_py,tagger_pz,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->Define(Rec()+rad::names::ScatEle(),Form("rad::epic::ParticleLowQ2Electron(tagger_px,tagger_py,tagger_pz,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	//copy rec_scat_ele to scat_ele
+	Reaction()->Define(rad::names::ScatEle(),Rec()+rad::names::ScatEle());
 	Reaction()->AddParticleName(Rec()+rad::names::ScatEle());
 
       }
