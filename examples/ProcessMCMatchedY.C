@@ -28,8 +28,8 @@ void ProcessMCMatchedY(){
   
   //these work but only if MCScatteredElectrons and MCScatteredProtons only have 1 particle in them??
   //apparently this isnt always the case. Benching them for now.
-  epic.setScatElectron(rad::indice::UseAsID(0), {"MCScatteredElectrons_objIdx.index"});
-  epic.setParticleIndex("pprime",rad::indice::UseAsID(0),{"MCScatteredProtons_objIdx.index"},2212);
+  epic.setScatElectron(rad::indice::UseAsID(0,2), {"MCScatteredElectrons_objIdx.index"});
+  epic.setParticleIndex("pprime",rad::indice::UseAsID(0,2),{"MCScatteredProtons_objIdx.index"},2212);
 
   
   //particle creator
