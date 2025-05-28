@@ -28,8 +28,8 @@ void ProcessMCMatchedY(){
   
   //these work but only if MCScatteredElectrons and MCScatteredProtons only have 1 particle in them??
   //apparently this isnt always the case. Benching them for now.
-  //epic.setScatElectron(rad::epic::FindObjID(), {"MCScatteredElectrons_objIdx"});
-  //epic.setParticleIndex("pprime",rad::epic::FindObjID(),{"MCScatteredProtons_objIdx"},2212);
+  epic.setScatElectron(rad::indice::UseAsID(0,2), {"MCScatteredElectrons_objIdx.index"});
+  epic.setParticleIndex("pprime",rad::indice::UseAsID(0,2),{"MCScatteredProtons_objIdx.index"},2212);
 
   
   //particle creator
@@ -39,12 +39,12 @@ void ProcessMCMatchedY(){
   //MCPARTICLES/HEPMC3 LIST, SINCE BEAM PARTICLES ARE
   //REMOVED FROM THE LIST
   //scattered electron
-  epic.setScatElectronIndex(0); 
+  //epic.setScatElectronIndex(0); 
   //epic_particles.LowQ2Electron();
   epic_particles.MCMatchedLowQ2Electron();
   
   //recoil proton (the baryon)
-  epic.setParticleIndex("pprime",1);
+  //epic.setParticleIndex("pprime",1);
   //epic_particles.RomanPotProton();
   epic_particles.MCMatchedRomanPotProton();
   epic_particles.MCMatchedB0Proton();
@@ -156,11 +156,11 @@ void ProcessMCMatchedY(){
   histo.Create<TH1D,double>({"hphi_pprime",";#phi_{p'} [rad]",100,-TMath::Pi(),TMath::Pi()},{"phi[pprime]"});
   
   //finally, book lazy snapshot before processing
-  //Bug 21.05 Gpenman: lazy snapshot never triggers.
-  //rely on immediate snap for now and fix later
+  //benchmark here will be zero if lazy snapshot
+  //which now works and will be booked till trigger
   gBenchmark->Start("snapshot");
-  //epic.Snapshot("MCMatchedY.root");
-  epic.ImmediateSnapshot("MCMatchedY.root");
+  epic.BookLazySnapshot("MCMatchedY.root");
+  //epic.ImmediateSnapshot("MCMatchedY.root");
   gBenchmark->Stop("snapshot");
   gBenchmark->Print("snapshot");
 

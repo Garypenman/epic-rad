@@ -45,14 +45,14 @@ namespace rad{
       
       //add new components
       if(tpx.empty()==false){
-	std::cout << "Old momenta         " <<idx<<" "<<pz[idx]<<" "<<m[idx]<<" "<<std::endl; 
+	//std::cout << "Old momenta         " <<idx<<" "<<pz[idx]<<" "<<m[idx]<<" "<<std::endl; 
 	px[idx]=tpx[0];
 	py[idx]=tpy[0];
 	pz[idx]=tpz[0];
 	m[idx] = tmass;
 	//m[idx] = 0.00051099900;
 	
-	std::cout<<"ParticleMCMatched "<<idx<<" "<<pz[idx]<<" "<<m[idx]<<" \n"<<std::endl;
+	//std::cout<<"ParticleMCMatched "<<idx<<" "<<pz[idx]<<" "<<m[idx]<<" \n"<<std::endl;
 	return idx;
       }
       else{
