@@ -21,8 +21,12 @@ namespace rad{
  
     
     //UndoAfterBurn undo{xangle};
+    template<typename Tp, typename Tm>
     class UndoAfterBurn 
     {
+      using momeType_t = Tp;
+      using massType_t = Tm;
+      
     public:
       UndoAfterBurn(PxPyPzMVector p_beam,PxPyPzMVector e_beam,Float_t angle=-0.025):_crossAngle{angle}{
 	//calculate and store current boosts and rotations
@@ -30,9 +34,8 @@ namespace rad{
       };
 
       //can't template as foreach requires compiletime knowledge
-      template<typename Tp, typename Tm>
-      // void operator()(RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const
-      bool operator()(RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const
+      // void operator()(RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const
+      RVec<momeType_t>  operator()(RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const
       {
 	
 	//apply to all particles
@@ -40,8 +43,8 @@ namespace rad{
 	for(uint i=0;i<n_parts;++i){
 	  undoAfterburn(i,px,py,pz,m);
 	}
-	return true;
-	//return px;
+	//return true;
+	return px;
       }
       //void  operator()(RVecF &px,RVecF &py,RVecF &pz, const RVecF &m) const
       //void operator()(unsigned int slot, RVecF &px,RVecF &py,RVecF &pz, const RVecD//  &m) const
@@ -56,10 +59,10 @@ namespace rad{
       // }
 
     private:
-      void RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam);
+      // void RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam);
 
-      template<typename Tp, typename Tm>
-      void undoAfterburn(uint idx,RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const;
+      //  template<typename momeType_t, typename massType_t>
+      //void undoAfterburn(uint idx,RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const;
       //  void undoAfterburn(uint idx,RVecF &px,RVecF &py,RVecF &pz, const RVecD &m) const;
 
       // Objects for undoing afterburn boost
@@ -69,7 +72,7 @@ namespace rad{
       MomVector _vBoostToCoM;
       MomVector _vBoostToHoF;
 
-    };
+    public:
 
     
     //----------------------------------------------------
@@ -80,7 +83,7 @@ namespace rad{
     
     // Undo AB and calculate boost vectors - DO THIS FIRST FOR EACH EVENT
     // USE BEAM VECTORS
-    void UndoAfterBurn::RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam){
+    void RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam){
        //We need MCParticle beams ?
       //   auto p_beam = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
       //auto e_beam = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
@@ -135,8 +138,8 @@ namespace rad{
     // Undo afterburn procedure only
     
     //void UndoAfterBurn::undoAfterburn(uint idx,RVecF &px,RVecF &py,RVecF&pz, const RVecD &m) const{
-    template<typename Tp, typename Tm>
-    void UndoAfterBurn::undoAfterburn(uint idx,RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const{
+    //template<typename momeType_t, typename massType_t>
+    void undoAfterburn(uint idx,RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const{
       //   std::cout<<"undoAfterburn in "<<idx<<" px "<<px[idx]<<" m "<<m[idx]<<std::endl;
       auto a = FourVector(idx,px,py,pz,m);
       //std::cout<<"undoAfterburn in "<<a<<_rotAboutY<<_rotAboutX<<" "<<_vBoostToCoM<<_vBoostToHoF<<std::endl;
@@ -151,6 +154,9 @@ namespace rad{
       py[idx]=a.Y();
       pz[idx]=a.z();
     }
-        
+    };
+
+
+  
   }//end epic namespace
 }//end rad namespace

@@ -15,6 +15,9 @@ namespace rad{
   namespace config{
     using rad::names::data_type::Rec;
     using rad::names::data_type::Truth;
+    using rad::reaction::util::DeduceColumnVectorType;
+    using rad::reaction::util::ColType;
+    using rad::epic::UndoAfterBurn;
 
     //! Class definition
 
@@ -48,45 +51,12 @@ namespace rad{
 	if(IsEnd){
 	  reaction::util::RedefineFundamentalAliases(this);
 
-	 rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
-	  // auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF &pz, const ROOT::RVecF &m){
-	  //   undoAB(px,py,pz,m);
-	  //   //return px;
-	  //   return true;
-	  // };
-	  
+	  ApplyAfterBurner(Rec());
+	  ApplyAfterBurnerOnBeams();
 
-	  //Undo the afterburner procedure
-	  //here we just account for crossing angle
-	  //just need to redefine 1 component. Other 2 have been updated
-	  //need to redefine at least one to make sure this is called before
-	  //any of the components
-	  // RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"py",Rec()+"pz",Rec()+"m"});
-	  //Filter(undoAB,{Rec()+"px",Rec()+"rec",Rec()+"rec",Rec()+"rec"},"undoAB_rec");
-
-	 //currently we adopt a JIT approach
-	 //This requires that the beams P4 is specified
-	 // either   epic.SetBeamsFromMC(); or FixBeamElectronMomentum(x,y,z)...
-	 Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
-		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
-		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
-		      (Rec()+"px").data(),(Rec()+"py").data(),(Rec()+"pz").data(),(Rec()+"m").data()),
-		 "undoAB_rec");
-	  //undo afterburn on beam components
-	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
-	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
-	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
-	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
-	  undoAB(beams_px,beams_py,beams_pz,beams_m);
-	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
-	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
-
-	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
-	  
 	  DefineBeamElectron();
 	  DefineBeamIon();
 
-	  //AddAdditionalComponents();
 	}
        }
       
@@ -115,29 +85,63 @@ namespace rad{
 	  auto id = helpers::Enumerate<uint>(filtstat.size());
 	  return id;//[filtstat==1];
 	},{Truth()+"genStat"}); //just need tru gen status to get N
-	
-	//make an mc_match branch cut on actual generated particles (no secondaries)
-	//Points rec array to tru array. rec_array has no beam particles, so can ignore
-	Define(Truth()+"match_id",[](const ROOT::RVecI& stat,const ROOT::RVecU& simID,const ROOT::RVecU& finalID){
-	  const auto n = finalID.size(); //mcparticles stat==1
-	  ROOT::RVecI final_match_id(n,-1);
-	  for(uint i=0;i<n;++i){
-	    if(i>=simID.size())break;
-	    //if this truth particle was reconstructed add its new id
-	    // if(rad::helpers::Contains(simID,finalID[i]))
-	    //final_match_id[finalID[i]]=i;
 
-	    if(rad::helpers::Contains(finalID,simID[i])){
-	      //final_match_id[finalID[i]]=simID[i]-2;
-	      final_match_id[i]=rad::helpers::findIndex(finalID,simID[i]);
+	//ReconstructedParticleAssociations.simID is going to be deprecated
+	//old files only have that, so here check if it exists, if not use new version
+	std::string simID = "ReconstructedParticleAssociations.simID";
+	if( rad::config::OriginalColumnExists(simID,CurrFrame()) == false ){
+	  simID = "_ReconstructedParticleAssociations_sim.index";
+	  //Also need to Define match_id seperately due to tyoe chunge from uint to int
+	  //make an mc_match branch cut on actual generated particles (no secondaries)
+	  //Points rec array to tru array. rec_array has no beam particles, so can ignore
+	  Define(Truth()+"match_id",[](const ROOT::RVecI& stat,const ROOT::RVecI& simID,const ROOT::RVecU& finalID){
+	    const auto n = finalID.size(); //mcparticles stat==1
+	    ROOT::RVecI final_match_id(n,-1);
+	    for(uint i=0;i<n;++i){
+	      if(i>=simID.size())break;
+	      //if this truth particle was reconstructed add its new id
+	      // if(rad::helpers::Contains(simID,finalID[i]))
+	      //final_match_id[finalID[i]]=i;
+
+	      if(rad::helpers::Contains(finalID,static_cast<UInt_t>(simID[i]))){
+		//final_match_id[finalID[i]]=simID[i]-2;
+		final_match_id[i]=rad::helpers::findIndex(finalID,simID[i]);
+	      }
 	    }
-	  }
-	  ROOT::RVecU tru_match_id =final_match_id[final_match_id!=-1]; //Filter valid ids
-	  //std::cout<<"tru_match_id "<<simID<<" "<<simID.size()<<" "<<finalID<<" "<<finalID.size()<<" "<<tru_match_id<<" "<<tru_match_id.size()<<std::endl;
-	  return tru_match_id;
+	    
+	    
+	    ROOT::RVecU tru_match_id =final_match_id[final_match_id!=-1]; //Filter valid ids
+	    //std::cout<<"tru_match_id "<<simID<<" "<<simID.size()<<" "<<finalID<<" "<<finalID.size()<<" "<<tru_match_id<<" "<<tru_match_id.size()<<std::endl;
+	    return tru_match_id;
+	    
+	  },{Truth()+"genStat",simID,Truth()+"final_id"});//simID points from rec to tru
 	  
-	},{Truth()+"genStat","ReconstructedParticleAssociations.simID",Truth()+"final_id"});//simID points from rec to tru
-	
+	}
+	else{
+	  //make an mc_match branch cut on actual generated particles (no secondaries)
+	  //Points rec array to tru array. rec_array has no beam particles, so can ignore
+	  Define(Truth()+"match_id",[](const ROOT::RVecI& stat,const ROOT::RVecU& simID,const ROOT::RVecU& finalID){
+	    const auto n = finalID.size(); //mcparticles stat==1
+	    ROOT::RVecI final_match_id(n,-1);
+	    for(uint i=0;i<n;++i){
+	      if(i>=simID.size())break;
+	      //if this truth particle was reconstructed add its new id
+	      // if(rad::helpers::Contains(simID,finalID[i]))
+	      //final_match_id[finalID[i]]=i;
+
+	      if(rad::helpers::Contains(finalID,simID[i])){
+		//final_match_id[finalID[i]]=simID[i]-2;
+		final_match_id[i]=rad::helpers::findIndex(finalID,simID[i]);
+	      }
+	    }
+	  
+	    
+	    ROOT::RVecU tru_match_id =final_match_id[final_match_id!=-1]; //Filter valid ids
+	    //std::cout<<"tru_match_id "<<simID<<" "<<simID.size()<<" "<<finalID<<" "<<finalID.size()<<" "<<tru_match_id<<" "<<tru_match_id.size()<<std::endl;
+	    return tru_match_id;
+	    
+	  },{Truth()+"genStat",simID,Truth()+"final_id"});//simID points from rec to tru
+	}
 
 	//make an branch with size of number of generator particles (status 1 or 4)
 	//used to truncate tru arrays
@@ -148,34 +152,11 @@ namespace rad{
 	if(IsEnd){
 	  reaction::util::RedefineFundamentalAliases(this);
 
-	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
-	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
-	  //   undoAB(px,py,pz,m);
-	  //   return px;
-	  // };
-	  //Undo the afterburner procedure
-	  //here we just account for crossing angle
-	  //just need to redefine 1 component. Other 2 have been updated
-	  //need to redefine at least one to make sure this is called before
-	  //any of the components
-	  //RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
-	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
-		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
-		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
-		      (Truth()+"px").data(),(Truth()+"py").data(),(Truth()+"pz").data(),(Truth()+"m").data()),
-		 "undoAB_tru");
 
-	  //undo afterburn on beam components
-	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
-	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
-	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
-	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
-	  undoAB(beams_px,beams_py,beams_pz,beams_m);
-	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
-	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
+	  ApplyAfterBurner(Truth());
+	  ApplyAfterBurner(Rec());
+	  ApplyAfterBurnerOnBeams();
 
-	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
-	  
 	  DefineBeamElectron();
 	  DefineBeamIon();
 
@@ -211,40 +192,13 @@ namespace rad{
 	if(IsEnd){
 	  reaction::util::RedefineFundamentalAliases(this);
 
-	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
-	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
-	  //   undoAB(px,py,pz,m);
-	  //   return px;
-	  // };
-	  //Undo the afterburner procedure
-	  //here we just account for crossing angle
-	  //just need to redefine 1 component. Other 2 have been updated
-	  //need to redefine at least one to make sure this is called before
-	  //any of the components
-	  //RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
-	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
-		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
-		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
-		      (Truth()+"px").data(),(Truth()+"py").data(),(Truth()+"pz").data(),(Truth()+"m").data()),
-		 "undoAB_tru");
 
-	  //undo afterburn on beam components
-	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
-	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
-	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
-	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
-	  undoAB(beams_px,beams_py,beams_pz,beams_m);
-	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
-	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
-
-	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	  ApplyAfterBurner(Truth());
+	  ApplyAfterBurnerOnBeams();
 	  
 	  DefineBeamElectron();
 	  DefineBeamIon();
 
-	  //after undo afterburn
-	  // AddAdditionalComponents();
- 
 	}
       }
       /**
@@ -274,107 +228,26 @@ namespace rad{
 	//which will not work as different number of elements
 	
 	if(IsEnd){
-	  
 	  reaction::util::RedefineFundamentalAliases(this);
+
 	  //use true masses for each rec track
 	  //i.e. ignore PID
 	  //Must truncate to make sure return array is same size as in array
 	  //RDF may add beams to tru_m before calling this giving a size mismatch
 	  RedefineViaAlias(Rec()+"m",[](const ROOT::RVecF& recm,const ROOT::RVecD& trum){return helpers::Truncate(ROOT::RVecF(trum),recm.size());},{Rec()+"m",Truth()+"m"});
-	  
-	  rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
-	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
-	  //   undoAB(px,py,pz,m);
-	  //   return px;
-	  // };
-	  // auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
-	  //   undoAB(px,py,pz,m);
 
-	  //   return px;
-	  // };
-	  
-	  
-	  //Undo the afterburner procedure
-	  //here we just account for crossing angle
-	  //just need to redefine 1 component. Other 2 have been updated
-	  //need to redefine at least one to make sure this is called before
-	  //any of the components
-	  // RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
-	  // RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"py",Rec()+"pz",Rec()+"m"});
-	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
-		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
-		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
-		      (Truth()+"px").data(),(Truth()+"py").data(),(Truth()+"pz").data(),(Truth()+"m").data()),
-		 "undoAB_tru");
-	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
-		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
-		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
-		      (Rec()+"px").data(),(Rec()+"py").data(),(Rec()+"pz").data(),(Rec()+"m").data()),
-		 "undoAB_rec");
-	  	  	  
-	  //undo afterburn on beam components
-	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
-	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
-	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
-	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
-	  undoAB(beams_px,beams_py,beams_pz,beams_m);
-	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
-	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
-
-	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	  ApplyAfterBurner(Truth());
+	  ApplyAfterBurner(Rec());
+	  ApplyAfterBurnerOnBeams();
 	  
 	  DefineBeamElectron();
 	  DefineBeamIon();
 	
-	  //AddAdditionalComponents();
-
-
 	  _truthMatched =true;
 	}
       }//AliasColumnsAndMatchWithMC
 
-      /*
-      void RedefineFundamentalAliases(){
-
-	using reaction::util::ColType;
-	
-	for(const auto& col : AliasMap()){
-	  const auto& alias = col.first;
-	  
-	  switch(static_cast<int>(DeduceColumnVectorType(col.second )) ) {
-	  // switch(static_cast<int>(reaction::util::DeduceColumnVectorType(this, col.second )) ) {
-	    
-	  case static_cast<int>(ColType::Undef):
-	    break;
-	  case static_cast<int>(ColType::UInt):
-	    RedefineFundamental<UInt_t>(alias);
-	    break;
-	  case static_cast<int>(ColType::Int):
-	    RedefineFundamental<Int_t>(alias);
-	    break;
-	  case static_cast<int>(ColType::Float):
-	    RedefineFundamental<Float_t>(alias);
-	    break;
-	  case static_cast<int>(ColType::Double):
-	    RedefineFundamental<Double_t>(alias);
-	    break;
-	  case static_cast<int>(ColType::Short):
-	    RedefineFundamental<Short_t>(alias);
-	    break;
-	  case static_cast<int>(ColType::Bool):
-	    RedefineFundamental<Bool_t>(alias);
-	    break;
-	  case static_cast<int>(ColType::Long):
-	    RedefineFundamental<Long_t>(alias);
-	    break;
-	    
-	  default:
-	    break;
-	  }
-	}
-
-      }
-      */
+ 
       void PostParticles() override{
 	//once particle are added to vectors
 	//we can calculate additional components
@@ -422,31 +295,6 @@ namespace rad{
 	
       }
       
-      
-      /**
-       * Mask tracks that do not have a valid ReconstructedParticleAssociations
-       */
-      /*
-      void MaskMCMatch(){
-	//define function to create and apply mask for rec or tru
-	auto match = [this](const string& type){
-	  //remove Pids that are not matched
-	  ApplyPidMask(type+"mask_mcmatch",type,
-		       [](const ROOT::RVecU& matchid,const ROOT::RVecI& pid){
-			 //create a mask array with indices with matchid values==1
-			 RVecI mask(pid.size());
-			 //Fill mask by looping over matched indexes and checking if
-			 //particle exists in recID
-			 for(auto& idx: matchid){
-			   mask[idx]=1; //this will add a 1 at mask[idx]
-			 }
-			 return mask;
-		       },{type+"_match_id",type+"_pid"} );
-	};//end of match lambda
-       
-	match(Rec());
-	match(Truth());
-      }*/
 
       void SetBeamsFromMC(Long64_t nrows=100){
 	_useBeamsFromMC=true;
@@ -467,6 +315,62 @@ namespace rad{
 	setBeamIon(*pxp,0,*pzp);//afterburned number
 
 	if(nthreads) ROOT::EnableImplicitMT(nthreads);
+      }
+
+      void ApplyAfterBurner(std::string type){
+	  //Undo the afterburner procedure
+	  //here we just account for crossing angle
+	  //just need to redefine 1 component. Other 2 have been updated
+	  //need to redefine at least one to make sure this is called before
+	  //any of the components
+	if(DeduceColumnVectorType(this,type + "px")==ColType::Float &&
+	   DeduceColumnVectorType(this,type + "m")==ColType::Double){
+
+	  RedefineViaAlias(type+"px",
+			   UndoAfterBurn<float,double>{_p4ion_beam,_p4el_beam,-0.025} ,
+			   {type+"px",type+"py",type+"pz",type+"m"});
+	}
+	else if(DeduceColumnVectorType(this,type + "px")==ColType::Double &&
+		DeduceColumnVectorType(this,type + "m")==ColType::Double){
+	  
+	  RedefineViaAlias(type+"px",
+			   UndoAfterBurn<double,double>{_p4ion_beam,_p4el_beam,-0.025} ,
+			   {type+"px",type+"py",type+"pz",type+"m"});
+	}
+  	else if(DeduceColumnVectorType(this,type + "px")==ColType::Float &&
+		DeduceColumnVectorType(this,type + "m")==ColType::Float){
+	  
+	  RedefineViaAlias(type+"px",
+			   UndoAfterBurn<float,float>{_p4ion_beam,_p4el_beam,-0.025} ,
+			   {type+"px",type+"py",type+"pz",type+"m"});
+	}
+ 	else if(DeduceColumnVectorType(this,type + "px")==ColType::Double &&
+		DeduceColumnVectorType(this,type + "m")==ColType::Float){
+	  
+	  RedefineViaAlias(type+"px",
+			   UndoAfterBurn<double,float>{_p4ion_beam,_p4el_beam,-0.025} ,
+			   {type+"px",type+"py",type+"pz",type+"m"});
+	}
+	else{
+	  std::cerr <<"Error ePICReaction::ApplyAfterBurner momentum and mass types not valid "<<CurrFrame().GetColumnType(type + "px")<<" "<<CurrFrame().GetColumnType(type + "m")<<std::endl;
+	  exit(0);
+	}
+      }
+      void ApplyAfterBurnerOnBeams(){
+
+	//undo afterburn on beam components
+	auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
+	auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
+	auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
+	auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
+	cout<<"Pre Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	rad::epic::UndoAfterBurn<double,double> undoAB_DD{_p4ion_beam,_p4el_beam,-0.025};
+	undoAB_DD(beams_px,beams_py,beams_pz,beams_m);
+	_p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
+	_p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
+	
+	cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	
       }
 
       bool IsTruthMatched()const {return _truthMatched;}
