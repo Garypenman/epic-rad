@@ -78,7 +78,7 @@ namespace rad{
 	//    rec_ entries = filled if that particle was reconstructed
 	
 	//remove all but true generated beam+final state particles
-	//rec_match_id : 0,1,2,...N=number beam+final particles 
+	//rec_match_id : 0,1,2,...N=number final particles 
 	Define(Rec()+"match_id",[](const ROOT::RVecI& stat){
 
 	  auto filtstat = stat[stat==1];
@@ -133,14 +133,13 @@ namespace rad{
 		//final_match_id[finalID[i]]=simID[i]-2;
 		final_match_id[i]=rad::helpers::findIndex(finalID,simID[i]);
 	      }
-	    }
-	  
+	    }	  
 	    
 	    ROOT::RVecU tru_match_id =final_match_id[final_match_id!=-1]; //Filter valid ids
 	    //std::cout<<"tru_match_id "<<simID<<" "<<simID.size()<<" "<<finalID<<" "<<finalID.size()<<" "<<tru_match_id<<" "<<tru_match_id.size()<<std::endl;
 	    return tru_match_id;
 	    
-	  },{Truth()+"genStat",simID,Truth()+"final_id"});//simID points from rec to tru
+	  },{Truth()+"genStat",simID,Truth()+"final_id"});//simID points from rec to tru, tru_final_id enumerates final state particles
 	}
 
 	//make an branch with size of number of generator particles (status 1 or 4)
@@ -247,8 +246,16 @@ namespace rad{
 	}
       }//AliasColumnsAndMatchWithMC
 
- 
+      
       void PostParticles() override{
+	//auto finalNames=FinalParticleNames();
+	// if(CheckForType(Rec())){
+
+	//   for(const auto& name:finalNames){
+	//     Redefine(Rec()+name,Form("rad::indice::InvalidateIndices(%s)",(Rec()+name).data()));
+	//   }
+
+	// }
 	//once particle are added to vectors
 	//we can calculate additional components
 	AddAdditionalComponents();

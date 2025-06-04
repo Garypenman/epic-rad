@@ -41,10 +41,15 @@ namespace rad{
     /// iafter is to keep the prototype of other particle adding
     /// functions which depend on other particles
     template<typename Tp, typename Tm,typename Tmatch>
-      int ParticleMCMatched(const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,RVec<Tmatch>& imatch){
-      std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<std::endl;
+    int ParticleMCMatched(const double threshold,const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,RVec<Tmatch>& imatch){
+      //std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<std::endl;
       //add new components
+      
       if(tpx.empty()==false){
+	//check threshold
+	if((tpx[idx]*tpx[idx]+tpy[idx]*tpy[idx]+tpz[idx]*tpz[idx])<threshold*threshold){
+	  return -1;
+	}
 	px[idx]=tpx[0];
 	py[idx]=tpy[0];
 	pz[idx]=tpz[0];
@@ -87,8 +92,9 @@ namespace rad{
 	
 	//cant find a way to use this yet
 	//float electron_mass=0.00051099900;
-	
-	Reaction()->Define(Rec()+rad::names::ScatEle(),Form("rad::epic::ParticleMCMatched(%s,tagger_px,tagger_py,tagger_pz,0.00051099900,%spx,%spy,%spz,%sm,%s)",rad::names::ScatEle().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
+
+	//Note threshold = 0.1
+	Reaction()->Define(Rec()+rad::names::ScatEle(),Form("rad::epic::ParticleMCMatched(0.1,%s,tagger_px,tagger_py,tagger_pz,0.00051099900,%spx,%spy,%spz,%sm,%s)",rad::names::ScatEle().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+rad::names::ScatEle());
 	
       }
@@ -110,7 +116,8 @@ namespace rad{
 	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.y","rp_py");
 	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.z","rp_pz");
 	
-	Reaction()->Define(Rec()+"RPproton",Form("rad::epic::ParticleMCMatched(%s,rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
+	//Note threshold = 10
+	Reaction()->Define(Rec()+"RPproton",Form("rad::epic::ParticleMCMatched(10,%s,rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"RPproton");
       }
       void MCMatchedB0Proton(const std::string name="pprime") {
@@ -118,7 +125,8 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
 	
-	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::ParticleMCMatched(%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
+	//Note threshold = 10
+	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::ParticleMCMatched(10,%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
       
@@ -130,7 +138,8 @@ namespace rad{
 
 	//if RP exists use that
 	//if not consider B0 candidates
-	Reaction()->Define(Rec()+"B0proton",Form("if(rec_RPproton==-1) return rad::epic::ParticleMCMatched(%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s); return -1;",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
+	//Note B0 threshold = 10
+	Reaction()->Define(Rec()+"B0proton",Form("if(rec_RPproton==-1) return rad::epic::ParticleMCMatched(10,%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s); return -1;",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
      }
    };

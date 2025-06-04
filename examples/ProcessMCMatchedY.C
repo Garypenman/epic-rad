@@ -42,6 +42,7 @@ void ProcessMCMatchedY(){
   //MCPARTICLES/HEPMC3 LIST, SINCE BEAM PARTICLES ARE
   //REMOVED FROM THE LIST
   //scattered electron
+  //THIS SHOULD NOT BE NEEDED NOW lowQ2 is in ReconstructedParticles
   //epic_particles.LowQ2Electron();
   //epic_particles.MCMatchedLowQ2Electron();
   
@@ -82,7 +83,7 @@ void ProcessMCMatchedY(){
   
   //option filtering of reconstructed tracks
   //epic.Filter("el_OK==1&&po_OK==1","partFilter");
-  epic.Filter("rec_pmag[scat_ele]>0.1","pmag_scat_ele_filt");
+  //epic.Filter("rec_pmag[scat_ele]>0.1","pmag_scat_ele_filt");
   //epic.Filter("rec_pmag[pprime]>0.1","pmag_pprime_filt");
   
   //////////////////////////////////////////////////////////
