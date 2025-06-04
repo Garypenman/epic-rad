@@ -40,8 +40,8 @@ namespace rad{
     ///synched with the tru_ scattered e-
     /// iafter is to keep the prototype of other particle adding
     /// functions which depend on other particles
-    template<typename Tp, typename Tm>
-      int ParticleMCMatched(const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,const RVecI& iafter){
+    template<typename Tp, typename Tm,typename Tmatch>
+      int ParticleMCMatched(const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,RVec<Tmatch>& imatch){
       std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<std::endl;
       //add new components
       if(tpx.empty()==false){
@@ -49,6 +49,8 @@ namespace rad{
 	py[idx]=tpy[0];
 	pz[idx]=tpz[0];
 	m[idx] = tmass;
+	//Add to Truth()+"match_id";
+	imatch.push_back(idx);
 	return idx;
       }
       else{	
@@ -86,7 +88,7 @@ namespace rad{
 	//cant find a way to use this yet
 	//float electron_mass=0.00051099900;
 	
-	Reaction()->Define(Rec()+rad::names::ScatEle(),Form("rad::epic::ParticleMCMatched(%s,tagger_px,tagger_py,tagger_pz,0.00051099900,%spx,%spy,%spz,%sm,{0})",rad::names::ScatEle().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->Define(Rec()+rad::names::ScatEle(),Form("rad::epic::ParticleMCMatched(%s,tagger_px,tagger_py,tagger_pz,0.00051099900,%spx,%spy,%spz,%sm,%s)",rad::names::ScatEle().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+rad::names::ScatEle());
 	
       }
@@ -98,7 +100,7 @@ namespace rad{
 	
 	//cant find a way to use this yet
 	//float proton_mass=0.93827208943;
-	Reaction()->Define(Rec()+name,Form("rad::epic::Particle(rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->Define(Rec()+name,Form("rad::epic::Particle(rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	//copy rec_pprime to pprime?
 	//Reaction()->Define(name,Rec()+name);
 	Reaction()->AddParticleName(Rec()+name);
@@ -108,7 +110,7 @@ namespace rad{
 	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.y","rp_py");
 	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.z","rp_pz");
 	
-	Reaction()->Define(Rec()+"RPproton",Form("rad::epic::ParticleMCMatched(%s,rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",name,Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->Define(Rec()+"RPproton",Form("rad::epic::ParticleMCMatched(%s,rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"RPproton");
       }
       void MCMatchedB0Proton(const std::string name="pprime") {
@@ -116,11 +118,22 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
 	
-	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::ParticleMCMatched(%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",name,Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::ParticleMCMatched(%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
       
-    };
+      void MCMatchedFarForwardProton(const std::string name="pprime") {
+	MCMatchedRomanPotProton(name);
+	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.x","B0_px");
+	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
+	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
+
+	//if RP exists use that
+	//if not consider B0 candidates
+	Reaction()->Define(Rec()+"B0proton",Form("if(rec_RPproton==-1) return rad::epic::ParticleMCMatched(%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s); return -1;",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
+	Reaction()->AddParticleName(Rec()+"B0proton");
+     }
+   };
     
   }
 }

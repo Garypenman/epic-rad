@@ -9,6 +9,7 @@
 #include "BasicKinematicsRDF.h"
 #include "ReactionKinematicsRDF.h"
 #include "ElectronScatterKinematicsRDF.h"
+#include "gammaN_2_Spin0Spin0SpinHalfRDF.h"
 #include <TBenchmark.h>
 #include <TCanvas.h>
 #include <TMath.h>
@@ -18,7 +19,8 @@ void ProcessMCMatchedY(){
   
   gBenchmark->Start("df total");
   
-  rad::config::ePICReaction epic{"events","/w/work5/home/garyp/eic/Farm/Y4260/recon/*.root"};
+  rad::config::ePICReaction epic{"events","/home/dglazier/EIC/data/Y4260_May/jpac_y4260_18_275_10day_0_recon.root"};
+  //rad::config::ePICReaction epic{"events","~/Dropbox/EIC/Spectroscopy/SpectroscopyWorkshop25/Y/data/jpac_y4260_18_275_10day_*_recon.root"};
   epic.SetBeamsFromMC(); //for this file 0=ebeam 1=pbeam
   
   //epic.AliasColumns();
@@ -28,6 +30,7 @@ void ProcessMCMatchedY(){
   
   //these work but only if MCScatteredElectrons and MCScatteredProtons only have 1 particle in them??
   //apparently this isnt always the case. Benching them for now.
+  //rad::indice::UseAsID(index, offset) offset in case beam particle included in record
   epic.setScatElectron(rad::indice::UseAsID(0,2), {"MCScatteredElectrons_objIdx.index"});
   epic.setParticleIndex("pprime",rad::indice::UseAsID(0,2),{"MCScatteredProtons_objIdx.index"},2212);
 
@@ -39,16 +42,16 @@ void ProcessMCMatchedY(){
   //MCPARTICLES/HEPMC3 LIST, SINCE BEAM PARTICLES ARE
   //REMOVED FROM THE LIST
   //scattered electron
-  //epic.setScatElectronIndex(0); 
   //epic_particles.LowQ2Electron();
-  epic_particles.MCMatchedLowQ2Electron();
+  //epic_particles.MCMatchedLowQ2Electron();
   
   //recoil proton (the baryon)
   //epic.setParticleIndex("pprime",1);
   //epic_particles.RomanPotProton();
-  epic_particles.MCMatchedRomanPotProton();
-  epic_particles.MCMatchedB0Proton();
-  
+  //epic_particles.MCMatchedRomanPotProton();
+  // epic_particles.MCMatchedB0Proton();
+   epic_particles.MCMatchedFarForwardProton();
+ 
   epic.setParticleIndex("pim",2,-211);
   epic.setParticleIndex("pip",3,211);
   
@@ -112,6 +115,9 @@ void ProcessMCMatchedY(){
   rad::rdf::MissPz(epic,"MissPz_Meson","{scat_ele,Y}");
   rad::rdf::MissTheta(epic,"MissTheta_Meson","{scat_ele,Y}");
 
+ //decay angles
+  rad::rdf::gn2s0s0s12::HelicityAngles(epic,"Heli");
+
   ///////////////////////////////////////////////////////////
   //Define histograms
   ///////////////////////////////////////////////////////////
@@ -152,7 +158,7 @@ void ProcessMCMatchedY(){
   
   histo.Create<TH1D,double>({"hpmag_pprime",";p_{p'} [GeV/c]",100,-1,300},{"pmag[pprime]"});
   histo.Create<TH1D,double>({"heta_pprime",";#eta_{p'} ",100,-10,10},{"eta[pprime]"});
-  histo.Create<TH1D,double>({"htheta_pprime",";#theta_{p'} [rad]",100,0,0.1},{"theta[pprime]"});
+  histo.Create<TH1D,double>({"htheta_pprime",";#theta_{p'} [rad]",1000,0,1},{"theta[pprime]"});
   histo.Create<TH1D,double>({"hphi_pprime",";#phi_{p'} [rad]",100,-TMath::Pi(),TMath::Pi()},{"phi[pprime]"});
   
   //finally, book lazy snapshot before processing
@@ -160,7 +166,7 @@ void ProcessMCMatchedY(){
   //which now works and will be booked till trigger
   gBenchmark->Start("snapshot");
   epic.BookLazySnapshot("MCMatchedY.root");
-  //epic.ImmediateSnapshot("MCMatchedY.root");
+  //epic.Snapshot("MCMatchedY.root");
   gBenchmark->Stop("snapshot");
   gBenchmark->Print("snapshot");
 
