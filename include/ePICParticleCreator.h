@@ -17,12 +17,13 @@ namespace rad{
       int Particle(const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,const RVecI& iafter){
       
       //std::cout<<"ParticleFixedBeam "<< px.size()<<m<<m.size()<<std::endl;
+      UInt_t entry = 0;
       auto idx = px.size();
       if(tpx.empty()==false){
 	//add new components
-	px.push_back(tpx[0]);
-	py.push_back(tpy[0]);
-	pz.push_back(tpz[0]);
+	px.push_back(tpx[entry]);
+	py.push_back(tpy[entry]);
+	pz.push_back(tpz[entry]);
 	m.push_back(tmass);
 	//m.push_back(0.00051099900);
       }
@@ -42,17 +43,18 @@ namespace rad{
     /// functions which depend on other particles
     template<typename Tp, typename Tm,typename Tmatch>
     int ParticleMCMatched(const double threshold,const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,RVec<Tmatch>& imatch){
-      //std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<std::endl;
+      //std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<" "<<idx<<" "<<(tpx[0]*tpx[0]+tpy[0]*tpy[0]+tpz[0]*tpz[0])<<" "<<threshold*threshold<<std::endl;
       //add new components
-      
+
+      UInt_t entry = 0;
       if(tpx.empty()==false){
 	//check threshold
-	if((tpx[idx]*tpx[idx]+tpy[idx]*tpy[idx]+tpz[idx]*tpz[idx])<threshold*threshold){
+	if((tpx[entry]*tpx[entry]+tpy[entry]*tpy[entry]+tpz[entry]*tpz[entry])<threshold*threshold){
 	  return -1;
 	}
-	px[idx]=tpx[0];
-	py[idx]=tpy[0];
-	pz[idx]=tpz[0];
+	px[idx]=tpx[entry];
+	py[idx]=tpy[entry];
+	pz[idx]=tpz[entry];
 	m[idx] = tmass;
 	//Add to Truth()+"match_id";
 	imatch.push_back(idx);
