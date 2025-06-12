@@ -75,77 +75,72 @@ namespace rad{
       _podio_meta = rad::podio::PodioMetadata(filenames[0].data());
       
     }
+
     
-    void ePICDetectorReaction::AssociateObjects(const string& object,const std::vector<std::string>& types,const std::vector<std::string>& members){
-      if(types.empty()==true) return;
-      ROOT::RVecU collIndices; //create indices for the given collection types
-      
-      for(const auto& assoc_name:types){ //loop over the specified detector associations
-	if(_podio_meta.Exists(assoc_name)==false){
-	  std::cerr<<"Warning : ePICDetectorReaction::AssociateObjects, no detector object "
-		   <<assoc_name<<" in podio_metadata. "<<std::endl;
+    void ePICDetectorReaction::AssociateObjects(const std::string& object, const std::vector<std::string>& types, const std::vector<std::string>& members) {
+      if (types.empty()) return;
+
+      ROOT::RVecU collIndices;
+      collIndices.reserve(types.size());
+
+      // Collect valid association names and their collection IDs
+      std::vector<std::string> valid_types;
+      for (const auto& assoc_name : types) {
+        if (!_podio_meta.Exists(assoc_name)) {
+	  //#ifdef RAD_DEBUG
+	  std::cerr << "Warning : ePICDetectorReaction::AssociateObjects, no detector object "
+		    << assoc_name << " in podio_metadata." << std::endl;
+	  //#endif
 	  continue;
-	}
-		  
-	//save the collectionID value in indices
-	//this allows us to define a local index for the collection
-	collIndices.push_back(_podio_meta.CollectionIDFor(assoc_name));
-	std::cout<<"AssociateObjects "<<object<<" "<<assoc_name<<" "<<collIndices.back()<<std::endl;
+        }
+        collIndices.push_back(_podio_meta.CollectionIDFor(assoc_name));
+        valid_types.push_back(assoc_name);
+	// #ifdef RAD_DEBUG
+        //std::cout << "AssociateObjects " << object << " " << assoc_name << " " << collIndices.back() << std::endl;
+        //#endif
       }
-	
-      //create functor to convert event collectionIDs to local indices
+      if (valid_types.empty()) return;
+
+      // Create functor to convert event collectionIDs to local indices
       auto local_collIDs = rad::podio::ConvertCollectionId(collIndices);
-      //define collection indices for this object association
-      auto coll_IdxsName = object+"_idxs";
-      Define(coll_IdxsName , local_collIDs, {"_ReconstructedParticles_"+object+".collectionID"});
-	
-      //loop over given data members and Define a vector for each association 
-      for(const auto& member:members){//loop over the data member we are interested in
-	  
-	std::string memberNames ;
-	for(const auto& assoc_name:types){ //loop over the specified detector associations
-	    
-	  memberNames+=assoc_name; //association name  e.g. CentralCKFTracks
-	  memberNames+="."+member; //plus specific data member required e.g. momentum.x
-	  memberNames+=","; //seperate each member by a comma e.g. CentralCKFTracks.momentum.x,
-	    
-	}
-	memberNames.pop_back();//remove last ,
-	  
-	//Define a list of corresponding collection names
-	//convert to indices of local collections
-	auto collListName = object+member+DoNotWriteTag();
-	replaceAll(collListName,".","_");
-	auto member_type = CurrFrame().GetColumnType(types[0]+'.'+member);
-	Define(collListName,Form("ROOT::RVec<%s>{%s}",member_type.data(),memberNames.data()));
+      auto coll_IdxsName = object + "_idxs";
+      Define(coll_IdxsName, local_collIDs, {"_ReconstructedParticles_" + object + ".collectionID"});
+    
+      // Loop over data members and Define a vector for each association
+      for (const auto& member : members) {
+        std::ostringstream memberNames;
+        for (const auto& assoc_name : valid_types) {
+	  memberNames << assoc_name << '.' << member << ',';
+        }
+        std::string memberNamesStr = memberNames.str();
+        if (!memberNamesStr.empty()) memberNamesStr.pop_back(); // remove last comma
 
-	//Here we define the transformation from the object collection (e.g. EcalEndcapNClusters.energy to a vector ordered in ReconstructedParticles
-	//memberName e.g. {{EcalEndcapPClusters.energy,EcalEndcapNClusters.energy,...}, {*Tracks*.energy,...} }
-	//coll_IdxsName e.g. {1}, i.e. use  EcalEndcapNClusters.energy //local version of _ReconstructedParticles_clusters.collectionID
-	// and put this value at "_ReconstructedParticles_"+object+".index" -> "_ReconstructedParticles_clusters.index
+        auto collListName = object + member + DoNotWriteTag();
+        replaceAll(collListName, ".", "_");
+        auto member_type = CurrFrame().GetColumnType(valid_types[0] + '.' + member);
+        Define(collListName, Form("ROOT::RVec<%s>{%s}", member_type.data(), memberNamesStr.data()));
 
-	//create strings for the Define
-	auto rec_index = string("_ReconstructedParticles_")+object+".index"; //object indices
-	std::string rec_begin = Form("ReconstructedParticles.%s_begin",object.data());
-	std::string rec_end = Form("ReconstructedParticles.%s_end",object.data());
-	auto func_rec_object =createFunctionCallString("rad::podio::combineOneToMany" ,
-						       collListName, coll_IdxsName, rec_index,
-						       rec_begin ,rec_end); 
-	std::string rec_object = Rec()+object+"_"+member;
-	replaceAll(rec_object,".","_");
-	  
-	Define(rec_object , func_rec_object);
+        // Transformation for object collection
+        auto rec_index = "_ReconstructedParticles_" + object + ".index";
+        std::string rec_begin = Form("ReconstructedParticles.%s_begin", object.data());
+        std::string rec_end = Form("ReconstructedParticles.%s_end", object.data());
+        auto func_rec_object = createFunctionCallString("rad::podio::combineOneToMany",
+                                                        collListName, coll_IdxsName, rec_index,
+                                                        rec_begin, rec_end);
+        std::string rec_object = Rec() + object + "_" + member;
+        replaceAll(rec_object, ".", "_");
 
-	//reorder to match truth and rec if required
-	if(rad::config::ColumnExists(Truth()+"match_id",CurrFrame()) == true ){
-	  auto func_rec_match =createFunctionCallString("rad::helpers::Reorder" ,
-							rec_object, Rec()+"match_id",Truth()+"match_id",Truth()+"n"); 
-	  RedefineExpr(rec_object, func_rec_match );
-	}
+        Define(rec_object, func_rec_object);
+
+        // Reorder to match truth and rec if required
+        if (rad::config::ColumnExists(Truth() + "match_id", CurrFrame())) {
+	  auto func_rec_match = createFunctionCallString("rad::helpers::Reorder",
+							 rec_object, Rec() + "match_id", Truth() + "match_id", Truth() + "n");
+	  RedefineExpr(rec_object, func_rec_match);
+        }
       }
-	
+    
     }
-
 
 
 
