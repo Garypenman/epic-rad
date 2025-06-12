@@ -47,7 +47,8 @@ namespace rad{
 
 	reaction::util::CountParticles(this,Rec());
 	
-	
+	Define(Rec()+"n",Form("%sm.size()",Rec().data()) );
+
 	if(IsEnd){
 	  reaction::util::RedefineFundamentalAliases(this);
 
@@ -89,7 +90,7 @@ namespace rad{
 	//ReconstructedParticleAssociations.simID is going to be deprecated
 	//old files only have that, so here check if it exists, if not use new version
 	std::string simID = "ReconstructedParticleAssociations.simID";
-	if( rad::config::OriginalColumnExists(simID,CurrFrame()) == false ){
+	if( OriginalColumnExists(simID) == false ){
 	  simID = "_ReconstructedParticleAssociations_sim.index";
 	  //Also need to Define match_id seperately due to tyoe chunge from uint to int
 	  //make an mc_match branch cut on actual generated particles (no secondaries)

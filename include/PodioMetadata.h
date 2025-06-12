@@ -5,7 +5,7 @@
 #include <string>
 
 namespace rad{
-  namespace epic{
+  namespace podio{
     using RVecS = ROOT::RVec<std::string>;
     using RVecU  = ROOT::RVecU;
     
