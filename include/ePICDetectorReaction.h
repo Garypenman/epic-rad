@@ -14,7 +14,6 @@
 #include "PodioMetadata.h"
 #include "PodioRelated.h"
 #include "RVecHelpers.h"
-#include "StringUtilities.h"
 #include <TFile.h>
 #include <TTree.h>
 
