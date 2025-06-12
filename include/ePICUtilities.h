@@ -62,8 +62,40 @@ namespace rad {
        * @brief Calculates and stores the required boosts and rotations based on beam vectors.
        * 
        * This must be called at construction for each new event to set up the transformations.
+       * Requires beam 4-vectors as input
        */
-      void RotsAndBoosts(PxPyPzMVector p_beam, PxPyPzMVector e_beam) {
+      void RotsAndBoosts(PxPyPzMVector p_beam, PxPyPzMVector e_beam);
+      
+
+      /**
+       * @brief Undo afterburner transformation for a single particle.
+       * 
+       * @param idx Index of the particle in the vectors.
+       * @param px Vector of x momentum.
+       * @param py Vector of y momentum.
+       * @param pz Vector of z momentum.
+       * @param m Vector of masses.
+       */
+      void undoAfterburn(size_t idx, RVec<momeType_t>& px, RVec<momeType_t>& py, RVec<momeType_t>& pz, const RVec<massType_t>& m) const {
+        auto a = FourVector(idx, px, py, pz, m);
+        // Step 1: Boost to CoM frame
+        a = boost(a, _vBoostToCoM);
+        // Step 2: Rotate to align with Z axis
+        a = _rotAboutY(a);
+        a = _rotAboutX(a);
+        // Step 3: Boost back to head-on frame
+        a = boost(a, _vBoostToHoF);
+
+        // Update momentum components
+        px[idx] = a.X();
+        py[idx] = a.Y();
+        pz[idx] = a.Z();
+      }
+    };
+
+
+    template<typename Tp, typename Tm>
+    inline void UndoAfterBurn<Tp, Tm>::RotsAndBoosts(PxPyPzMVector p_beam, PxPyPzMVector e_beam) {
         // Set beam coordinates with crossing angle and energy
         p_beam.SetCoordinates(_crossAngle * p_beam.E(), 0., p_beam.E(), p_beam.M());
         e_beam.SetCoordinates(0., 0., -e_beam.E(), e_beam.M());
@@ -97,33 +129,6 @@ namespace rad {
         // Apply final boost to beams (not strictly necessary for all workflows)
         p_beam = boost(p_beam, _vBoostToHoF);
         e_beam = boost(e_beam, _vBoostToHoF);
-      }
-
-      /**
-       * @brief Undo afterburner transformation for a single particle.
-       * 
-       * @param idx Index of the particle in the vectors.
-       * @param px Vector of x momentum.
-       * @param py Vector of y momentum.
-       * @param pz Vector of z momentum.
-       * @param m Vector of masses.
-       */
-      void undoAfterburn(size_t idx, RVec<momeType_t>& px, RVec<momeType_t>& py, RVec<momeType_t>& pz, const RVec<massType_t>& m) const {
-        auto a = FourVector(idx, px, py, pz, m);
-        // Step 1: Boost to CoM frame
-        a = boost(a, _vBoostToCoM);
-        // Step 2: Rotate to align with Z axis
-        a = _rotAboutY(a);
-        a = _rotAboutX(a);
-        // Step 3: Boost back to head-on frame
-        a = boost(a, _vBoostToHoF);
-
-        // Update momentum components
-        px[idx] = a.X();
-        py[idx] = a.Y();
-        pz[idx] = a.Z();
-      }
-    };
-
+     }
   } // namespace epic
 } // namespace rad
