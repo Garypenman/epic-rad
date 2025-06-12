@@ -45,17 +45,15 @@ namespace rad{
        * @param collID Vector of (possibly non-unique) collection IDs to map.
        * @return Vector of local indices, or rad::constant::InvalidEntry<int>() if an ID is not found.
        */
-      ROOT::RVecI operator()(const ROOT::RVecU& collID) {
-        ROOT::RVecI localID(collID.size(), rad::constant::InvalidEntry<int>());
-        uint i = 0;
-        for (const auto id : collID) {
-          auto it = _idToIndexMap.find(id);
-          if (it != _idToIndexMap.end()) {
-            localID[i] = it->second;
-          }
-          ++i;
-        }
-        return localID;
+      ROOT::RVecI operator()(const ROOT::RVecU& collID) const {
+	ROOT::RVecI localID(collID.size(), rad::constant::InvalidEntry<int>());
+	for (size_t i = 0; i < collID.size(); ++i) {
+	  auto it = _idToIndexMap.find(collID[i]);
+	  if (it != _idToIndexMap.end()) {
+	    localID[i] = it->second;
+	  }
+	}
+	return localID;
       }
 
     private:
@@ -104,6 +102,7 @@ namespace rad{
     {
       auto n_rec = rec_begin.size();
       ROOT::RVec<ROOT::RVec<Tval>> vals;
+      vals.reserve(n_rec);
       for (size_t i = 0; i < n_rec; ++i) {
         auto start_iterator = object_vals.begin() + rec_begin[i];
         auto end_iterator = object_vals.begin() + rec_end[i];
