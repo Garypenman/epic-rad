@@ -4,159 +4,126 @@
 #include <Math/RotationX.h>
 #include <Math/RotationY.h>
 
-//inline  std::array<double,4>  rad::beams::InitBotComponents() {return {0,0,99.9339,0.938272};}
-//inline  std::array<double,4>  rad::beams::InitTopComponents() {return {0,0,-10.007,0.000510999};}
+namespace rad {
+  namespace epic {
 
-
-namespace rad{
-  namespace epic{
-
-    using PxPyPzEVector=ROOT::Math::LorentzVector<ROOT::Math::PxPyPzEVector>;
-    using MomVector=ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<Double_t>,ROOT::Math::DefaultCoordinateSystemTag>;
+    using PxPyPzEVector = ROOT::Math::LorentzVector<ROOT::Math::PxPyPzEVector>;
+    using MomVector = ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<Double_t>, ROOT::Math::DefaultCoordinateSystemTag>;
     using ROOT::Math::RotationX;
     using ROOT::Math::RotationY;
     using ROOT::RVecD;
     using ROOT::RVecF;
-    
- 
-    
-    //UndoAfterBurn undo{xangle};
+
+    /**
+     * @brief Class to undo afterburner transformations on particle momenta.
+     * 
+     * This class computes and stores the required boosts and rotations to 
+     * undo the crossing angle and put the event in the desired reference frame.
+     */
     template<typename Tp, typename Tm>
-    class UndoAfterBurn 
-    {
+    class UndoAfterBurn {
       using momeType_t = Tp;
       using massType_t = Tm;
-      
-    public:
-      UndoAfterBurn(PxPyPzMVector p_beam,PxPyPzMVector e_beam,Float_t angle=-0.025):_crossAngle{angle}{
-	//calculate and store current boosts and rotations
-	RotsAndBoosts(p_beam,e_beam);
-      };
 
-      //can't template as foreach requires compiletime knowledge
-      // void operator()(RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const
-      RVec<momeType_t>  operator()(RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const
-      {
-	
-	//apply to all particles
-	auto n_parts = m.size();
-	for(uint i=0;i<n_parts;++i){
-	  undoAfterburn(i,px,py,pz,m);
-	}
-	//return true;
-	return px;
+    public:
+      /**
+       * @brief Constructor. Initializes the undo parameters using beam vectors and crossing angle.
+       */
+      UndoAfterBurn(PxPyPzMVector p_beam, PxPyPzMVector e_beam, Float_t angle = -0.025)
+        : _crossAngle{angle} {
+        RotsAndBoosts(p_beam, e_beam);
       }
-      //void  operator()(RVecF &px,RVecF &py,RVecF &pz, const RVecF &m) const
-      //void operator()(unsigned int slot, RVecF &px,RVecF &py,RVecF &pz, const RVecD//  &m) const
-      // {
-	
-      // 	//apply to all particles
-      // 	auto n_parts = m.size();
-      // 	for(auto i=0;i<n_parts;++i){
-      // 	  undoAfterburn(i,px,py,pz,m);
-      // 	}
-      // 	//return px;
-      // }
+
+      /**
+       * @brief Applies the undo transformation to all particles in the event.
+       * 
+       * @param px Vector of x components of momentum.
+       * @param py Vector of y components of momentum.
+       * @param pz Vector of z components of momentum.
+       * @param m Vector of masses.
+       * @return Transformed px vector (for chaining if desired).
+       */
+      RVec<momeType_t> operator()(RVec<momeType_t>& px, RVec<momeType_t>& py, RVec<momeType_t>& pz, const RVec<massType_t>& m) const {
+        auto n_parts = m.size();
+        for (size_t i = 0; i < n_parts; ++i) {
+          undoAfterburn(i, px, py, pz, m);
+        }
+        return px;
+      }
 
     private:
-      // void RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam);
+      Float_t _crossAngle{-0.025};          // Crossing angle in radians
+      RotationX _rotAboutX;                 // Rotation about X axis
+      RotationY _rotAboutY;                 // Rotation about Y axis
+      MomVector _vBoostToCoM;               // Boost vector to CoM frame
+      MomVector _vBoostToHoF;               // Boost vector back to head-on frame
 
-      //  template<typename momeType_t, typename massType_t>
-      //void undoAfterburn(uint idx,RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const;
-      //  void undoAfterburn(uint idx,RVecF &px,RVecF &py,RVecF &pz, const RVecD &m) const;
+      /**
+       * @brief Calculates and stores the required boosts and rotations based on beam vectors.
+       * 
+       * This must be called at construction for each new event to set up the transformations.
+       */
+      void RotsAndBoosts(PxPyPzMVector p_beam, PxPyPzMVector e_beam) {
+        // Set beam coordinates with crossing angle and energy
+        p_beam.SetCoordinates(_crossAngle * p_beam.E(), 0., p_beam.E(), p_beam.M());
+        e_beam.SetCoordinates(0., 0., -e_beam.E(), e_beam.M());
 
-      // Objects for undoing afterburn boost
-      Float_t _crossAngle{-0.025}; // Crossing angle in radians
-      RotationX _rotAboutX;
-      RotationY _rotAboutY;
-      MomVector _vBoostToCoM;
-      MomVector _vBoostToHoF;
+        // Calculate boost to center-of-mass (CoM) frame
+        auto CoM_boost = p_beam + e_beam;
+        _vBoostToCoM = CoM_boost.BoostToCM();
 
-    public:
+        // Boost beams to CoM frame
+        p_beam = boost(p_beam, _vBoostToCoM);
+        e_beam = boost(e_beam, _vBoostToCoM);
 
-    
-    //----------------------------------------------------
-    //----------------------------------------------------
-    //            UNDO AFTERBURNER PROCEDURE
-    //----------------------------------------------------
-    //----------------------------------------------------
-    
-    // Undo AB and calculate boost vectors - DO THIS FIRST FOR EACH EVENT
-    // USE BEAM VECTORS
-    void RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam){
-       //We need MCParticle beams ?
-      //   auto p_beam = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
-      //auto e_beam = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
-    
-      // auto p_beam = rad::beams::InitialBotVector();
-      //auto e_beam = rad::beams::InitialTopVector();
-      
-      // Holding vectors for beam - undoing crossing angle ONLY
-      //PxPyPzMVector p_beam(_crossAngle*p.E(), 0., p.E(), p.M());
-      //PxPyPzMVector e_beam(0., 0., -k.E(), k.M());
-      p_beam.SetCoordinates(_crossAngle*p_beam.E(), 0., p_beam.E(), p_beam.M());
-      e_beam.SetCoordinates(0., 0., -e_beam.E(), e_beam.M());
-     
-      // Define boost vector to CoM frame
-      auto CoM_boost = p_beam+e_beam;
-      //vBoostToCoM.SetXYZ(-CoM_boost.X()/CoM_boost.E(), -CoM_boost.Y()/CoM_boost.E(), -CoM_boost.Z()/CoM_boost.E());
-      _vBoostToCoM =  CoM_boost.BoostToCM();
-      
-      // Apply boost to beam vectors
-      p_beam = boost(p_beam, _vBoostToCoM);
-      e_beam = boost(e_beam, _vBoostToCoM);
-  
-      // Calculate rotation angles and create rotation objects
-      auto rotY = -1.0*TMath::ATan2(p_beam.X(), p_beam.Z());
-      auto rotX = 1.0*TMath::ATan2(p_beam.Y(), p_beam.Z());
+        // Calculate required rotation angles
+        auto rotY = -1.0 * TMath::ATan2(p_beam.X(), p_beam.Z());
+        auto rotX = 1.0 * TMath::ATan2(p_beam.Y(), p_beam.Z());
 
-      _rotAboutY = ROOT::Math::RotationY(rotY);
-      _rotAboutX = ROOT::Math::RotationX(rotX);
+        // Set up rotation objects
+        _rotAboutY = ROOT::Math::RotationY(rotY);
+        _rotAboutX = ROOT::Math::RotationX(rotX);
 
-      // Apply rotation to beam vectors
-      p_beam = _rotAboutY(p_beam);
-      p_beam = _rotAboutX(p_beam);
-      e_beam = _rotAboutY(e_beam);
-      e_beam = _rotAboutX(e_beam);
+        // Rotate beams to align with axes
+        p_beam = _rotAboutY(p_beam);
+        p_beam = _rotAboutX(p_beam);
+        e_beam = _rotAboutY(e_beam);
+        e_beam = _rotAboutX(e_beam);
 
-      // Define boost vector back to head-on frame
-      PxPyPzEVector HoF_boost(0., 0., CoM_boost.Z(), CoM_boost.E());
-      _vBoostToHoF = -HoF_boost.BoostToCM();
+        // Calculate boost back to head-on frame
+        PxPyPzEVector HoF_boost(0., 0., CoM_boost.Z(), CoM_boost.E());
+        _vBoostToHoF = -HoF_boost.BoostToCM();
 
-      
-      //vBoostToHoF.SetXYZ(HoF_boost.X()/HoF_boost.E(), HoF_boost.Y()/HoF_boost.E(), HoF_boost.Z()/HoF_boost.E());
+        // Apply final boost to beams (not strictly necessary for all workflows)
+        p_beam = boost(p_beam, _vBoostToHoF);
+        e_beam = boost(e_beam, _vBoostToHoF);
+      }
 
-      // Apply boost back to head on frame to beam vectors
-      p_beam = boost(p_beam, _vBoostToHoF);
-      e_beam = boost(e_beam, _vBoostToHoF);
-      //      std::cout<<"UndoAfterBurn::RotsAndBoosts() "<<p_beam<<" "<<e_beam<<std::endl;
-      // Make changes to input vectors
-      //p.SetPxPyPzE(p_beam.X(), p_beam.Y(), p_beam.Z(), p_beam.E());
-      // k.SetPxPyPzE(e_beam.X(), e_beam.Y(), e_beam.Z(), e_beam.E());
-    }
-    //////////////////////////////////////////////////////
-    // Undo afterburn procedure only
-    
-    //void UndoAfterBurn::undoAfterburn(uint idx,RVecF &px,RVecF &py,RVecF&pz, const RVecD &m) const{
-    //template<typename momeType_t, typename massType_t>
-    void undoAfterburn(uint idx,RVec<momeType_t> &px,RVec<momeType_t> &py,RVec<momeType_t> &pz, const RVec<massType_t> &m) const{
-      //   std::cout<<"undoAfterburn in "<<idx<<" px "<<px[idx]<<" m "<<m[idx]<<std::endl;
-      auto a = FourVector(idx,px,py,pz,m);
-      //std::cout<<"undoAfterburn in "<<a<<_rotAboutY<<_rotAboutX<<" "<<_vBoostToCoM<<_vBoostToHoF<<std::endl;
-      // Undo AB procedure for single vector, a^{mu}
-      a = boost(a, _vBoostToCoM); // BOOST TO COM FRAME
-      a = _rotAboutY(a);          // ROTATE TO Z-AXIS
-      a = _rotAboutX(a);          // ROTATE TO Z-AXIS
-      a = boost(a, _vBoostToHoF); // BOOST BACK TO HEAD ON FRAME
-      
-      //apply to original components
-      px[idx]=a.X();
-      py[idx]=a.Y();
-      pz[idx]=a.z();
-    }
+      /**
+       * @brief Undo afterburner transformation for a single particle.
+       * 
+       * @param idx Index of the particle in the vectors.
+       * @param px Vector of x momentum.
+       * @param py Vector of y momentum.
+       * @param pz Vector of z momentum.
+       * @param m Vector of masses.
+       */
+      void undoAfterburn(size_t idx, RVec<momeType_t>& px, RVec<momeType_t>& py, RVec<momeType_t>& pz, const RVec<massType_t>& m) const {
+        auto a = FourVector(idx, px, py, pz, m);
+        // Step 1: Boost to CoM frame
+        a = boost(a, _vBoostToCoM);
+        // Step 2: Rotate to align with Z axis
+        a = _rotAboutY(a);
+        a = _rotAboutX(a);
+        // Step 3: Boost back to head-on frame
+        a = boost(a, _vBoostToHoF);
+
+        // Update momentum components
+        px[idx] = a.X();
+        py[idx] = a.Y();
+        pz[idx] = a.Z();
+      }
     };
 
-
-  
-  }//end epic namespace
-}//end rad namespace
+  } // namespace epic
+} // namespace rad
