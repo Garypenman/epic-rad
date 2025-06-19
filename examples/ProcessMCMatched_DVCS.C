@@ -19,8 +19,9 @@ void ProcessMCMatched_DVCS(){
   using namespace rad::names::data_type; //for Rec(), Truth()
 
   gBenchmark->Start("df");
+   ROOT::EnableImplicitMT(4);
 
-   rad::config::ePICReaction epic{"events","~/EIC/data/DVCS/DVCS_10x100.root"};
+   rad::config::ePICReaction epic{"events","~/EIC/data/DVCS/DVCS.10x100_combined.root"};
    epic.SetBeamsFromMC(0,3); //for this file 0=ebeam 1=pbeam
    epic.AliasColumnsAndMatchWithMC();
   
@@ -56,10 +57,10 @@ void ProcessMCMatched_DVCS(){
   rad::rdf::Mass(epic,"Whad","{photon,proton}");
 
   //t distribution, column name
-  rad::rdf::TBot(epic,"tb_pn");
-  rad::rdf::TPrimeBot(epic,"tbp_pn");
-  rad::rdf::TTop(epic,"tt_gZ");
-  rad::rdf::TPrimeTop(epic,"ttp_gZ");
+  rad::rdf::TBot(epic,"t_bot");
+  rad::rdf::TPrimeBot(epic,"tp_bot");
+  rad::rdf::TTop(epic,"t_top");
+  rad::rdf::TPrimeTop(epic,"tp_top");
 
   //CM production angles
   rad::rdf::CMAngles(epic,"CM");
@@ -67,14 +68,14 @@ void ProcessMCMatched_DVCS(){
   rad::rdf::PhiProtonRest(epic,"Phi_PRest");
 
   //exlusivity
-  rad::rdf::MissMass(epic,"MissMass","{scat_ele,proton,photon}");
+  rad::rdf::MissMass2(epic,"MissMass2","{scat_ele,proton,photon}");
   rad::rdf::MissP(epic,"MissP","{scat_ele,proton,photon}");
   rad::rdf::MissE(epic,"MissE","{scat_ele,proton,photon}");
   rad::rdf::MissPt(epic,"MissPt","{scat_ele,proton,photon}");
   rad::rdf::MissPz(epic,"MissPz","{scat_ele,proton,photon}");
   rad::rdf::MissTheta(epic,"MissTheta","{scat_ele,proton,photon}");
 
-  rad::rdf::MissMass(epic,"MissMassPhoto","{scat_ele,photon}");
+  rad::rdf::MissMass2(epic,"MissMassPhoto2","{scat_ele,photon}");
   rad::rdf::MissP(epic,"MissPPhoto","{scat_ele,photon}");
   rad::rdf::MissE(epic,"MissEPhoto","{scat_ele,photon}");
   rad::rdf::MissPt(epic,"MissPtPhoto","{scat_ele,photon}");
@@ -94,7 +95,7 @@ void ProcessMCMatched_DVCS(){
   //histo.Splitter().AddRegularDimension("xxx", rad::histo::RegularSplits(nbins,low,high) );
   histo.Init({Rec(),Truth()});//will create histograms for rec and truth
 
-  histo.Create<TH1D,double>({"hQ2",";Q^{2} [GeV^{2}]",100,0,2.},{"Q2"});
+  histo.Create<TH1D,double>({"hQ2",";Q^{2} [GeV^{2}]",100,0,5.},{"Q2"});
   histo.Create<TH1D,double>({"hWelec",";W (electro miss mass) [GeV/c^{2}]",100,0,200.},{"W"});
   histo.Create<TH1D,double>({"hWhad",";W (hadro final state) [GeV/c^{2}]",100,0,200.},{"Whad"});
 
@@ -106,19 +107,19 @@ void ProcessMCMatched_DVCS(){
   histo.Create<TH1D,double>({"hcthCM",";cos(#theta_{CM})",100,-1,1},{"CM_CosTheta"});
   histo.Create<TH1D,double>({"hphCM",";#phi_{CM}",100,-TMath::Pi(),TMath::Pi()},{"CM_Phi"});
   
-  histo.Create<TH1D,double>({"hMissMassPhoto",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMassPhoto"});
-  histo.Create<TH1D,double>({"hmissPPhoto",";p_{miss}(e',Y)",1000,-200,200},{"MissPPhoto"});
-  histo.Create<TH1D,double>({"hmissEPhoto",";E_{miss}(e',Y)",1000,-200,200},{"MissEPhoto"});
-  histo.Create<TH1D,double>({"hmissPtPhoto",";p_{t,miss}(e',Y)",100,0,10},{"MissPtPhoto"});
-  histo.Create<TH1D,double>({"hmissPzPhoto",";p_{z,miss}(e',Y)",1000,-100,100},{"MissPzPhoto"});
-  histo.Create<TH1D,double>({"hmissThetaPhoto",";#theta_{miss}(e',Y)",100,-TMath::Pi(),TMath::Pi()},{"MissThetaPhoto"});
+  histo.Create<TH1D,double>({"hMissMassPhoto",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMassPhoto2"});
+  histo.Create<TH1D,double>({"hmissPPhoto",";p_{miss}(e',gamma)",1000,-200,200},{"MissPPhoto"});
+  histo.Create<TH1D,double>({"hmissEPhoto",";E_{miss}(e',gamma)",1000,-200,200},{"MissEPhoto"});
+  histo.Create<TH1D,double>({"hmissPtPhoto",";p_{t,miss}(e',gamma)",100,0,10},{"MissPtPhoto"});
+  histo.Create<TH1D,double>({"hmissPzPhoto",";p_{z,miss}(e',gamma)",1000,-100,100},{"MissPzPhoto"});
+  histo.Create<TH1D,double>({"hmissThetaPhoto",";#theta_{miss}(e',gamma)",100,-TMath::Pi(),TMath::Pi()},{"MissThetaPhoto"});
  
-  histo.Create<TH1D,double>({"hMissMass",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMass"});
-  histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',Y)",1000,-100,100},{"MissP"});
-  histo.Create<TH1D,double>({"hmissE",";E_{miss}(e',Y)",1000,-100,100},{"MissE"});
-  histo.Create<TH1D,double>({"hmissPt",";p_{t,miss}(e',Y)",100,0,10},{"MissPt"});
-  histo.Create<TH1D,double>({"hmissPz",";p_{z,miss}(e',Y)",1000,-100,100},{"MissPz"});
-  histo.Create<TH1D,double>({"hmissTheta",";#theta_{miss}(e',Y)",100,-TMath::Pi(),TMath::Pi()},{"MissTheta"});
+  histo.Create<TH1D,double>({"hMissMass",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMass2"});
+  histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',gamma)",1000,-100,100},{"MissP"});
+  histo.Create<TH1D,double>({"hmissE",";E_{miss}(e',gamma)",1000,-100,100},{"MissE"});
+  histo.Create<TH1D,double>({"hmissPt",";p_{t,miss}(e',gamma)",100,0,10},{"MissPt"});
+  histo.Create<TH1D,double>({"hmissPz",";p_{z,miss}(e',gamma)",1000,-100,100},{"MissPz"});
+  histo.Create<TH1D,double>({"hmissTheta",";#theta_{miss}(e',gamma)",100,-TMath::Pi(),TMath::Pi()},{"MissTheta"});
  
   //particle momenta
   histo.Create<TH1D,double>({"hpmag_elec",";p_{e'} [GeV/c]",100,-1,20},{"pmag[scat_ele]"});
