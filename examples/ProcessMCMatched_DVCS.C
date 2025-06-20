@@ -19,23 +19,23 @@ void ProcessMCMatched_DVCS(){
   using namespace rad::names::data_type; //for Rec(), Truth()
 
   gBenchmark->Start("df");
-   ROOT::EnableImplicitMT(4);
+   ROOT::EnableImplicitMT(8);
 
    rad::config::ePICReaction epic{"events","~/EIC/data/DVCS/DVCS.10x100_combined.root"};
-   epic.SetBeamsFromMC(0,3); //for this file 0=ebeam 1=pbeam
+   epic.SetBeamsFromMC(0,3); //for this file 0=ebeam 3=pbeam
    epic.AliasColumnsAndMatchWithMC();
   
-  //Assign particles names and indices
-  //indicing comes from ordering in hepmc file
+   //Assign particles names and indices
+   //indicing comes from ordering in hepmc file
    //epic.setBeamIonIndex(3);
    // epic.setBeamElectronIndex(0);
    epic.setScatElectronIndex(0);
-  //give final state hadrons names,
-  //if we give a PDG code it will generate el_OK branches etc
-  //el_OK = 1 if electron reconstructed with right PDG
-  epic.setParticleIndex("photon",1);
-  epic.setParticleIndex("proton",2);
-
+   //give final state hadrons names,
+   //if we give a PDG code it will generate el_OK branches etc
+   //el_OK = 1 if electron reconstructed with right PDG
+   epic.setParticleIndex("photon",1);
+   epic.setParticleIndex("proton",2);
+   
   //particle creator
   rad::epic::ePICParticleCreator epic_particles{epic};
   //hack in proton from far forward particles
@@ -50,6 +50,11 @@ void ProcessMCMatched_DVCS(){
 
   //must call this after all particles are configured
   epic.makeParticleMap();
+
+  /////////////////////////////////////////////////
+  ///Some filters
+  /////////////////////////////////////////////////
+  // epic.Filter("rec_pmag[proton]>0");
   
   //masses column name, {+ve particles}, {-ve particles}
   rad::rdf::MissMass(epic,"W","{scat_ele}");
@@ -134,7 +139,7 @@ void ProcessMCMatched_DVCS(){
   histo.Create<TH2D,double,double>({"htheta_protonVmissp",";#theta_{p'} versus missing proton[rad]",100,0,0.01,100,0,0.01},{"theta[proton]","MissThetaPhoto"});
  
   //if I want a ROOT ttree
-  epic.BookLazySnapshot("DVCS.root");
+  // epic.BookLazySnapshot("DVCS.root");
   gBenchmark->Start("processing");
 			
   //save all histograms to file

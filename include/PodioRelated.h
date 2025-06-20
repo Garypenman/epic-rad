@@ -101,6 +101,7 @@ namespace rad{
                                                   const ROOT::RVec<Tval>& object_vals)
     {
       auto n_rec = rec_begin.size();
+      //vals vector has 1 entry for every element in rec_begin (e.g. for every reconstructed particle)
       ROOT::RVec<ROOT::RVec<Tval>> vals;
       vals.reserve(n_rec);
       for (size_t i = 0; i < n_rec; ++i) {
@@ -128,6 +129,7 @@ namespace rad{
                                                   const ROOT::RVec<Tlims>& rec_begin,
                                                   const ROOT::RVec<Tlims>& rec_end)
     {
+ 
       auto object_vals = combineCollections(collections, local_collIds, order);
       return vecOfOneToMany(rec_begin, rec_end, object_vals);
     }
