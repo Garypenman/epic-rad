@@ -158,6 +158,8 @@ void ProcessMCMatchedY(){
   
   histo.Create<TH1D,double>({"hcthCM",";cos(#theta_{CM})",100,-1,1},{"CM_CosTheta"});
   histo.Create<TH1D,double>({"hphCM",";#phi_{CM}",100,-TMath::Pi(),TMath::Pi()},{"CM_Phi"});
+  histo.Create<TH1D,double>({"hcthHeli",";cos(#theta_{hel})",100,-1,1},{"Heli_CosTheta"});
+  histo.Create<TH1D,double>({"hphHeli",";#phi_{hel}",100,-TMath::Pi(),TMath::Pi()},{"Heli_Phi"});
   
   histo.Create<TH1D,double>({"hmissMassMeson2",";M^{2}_{miss} [GeV/c^{2}]",300,-150,150},{"MissMass2_Meson"});
   histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',Y)",1000,250,350},{"MissP_Meson"});
