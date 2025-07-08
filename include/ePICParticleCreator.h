@@ -43,7 +43,6 @@ namespace rad{
     /// functions which depend on other particles
     template<typename Tp, typename Tm,typename Tmatch>
     int ParticleMCMatched(const double threshold,const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,RVec<Tmatch>& imatch){
-      //std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<" "<<idx<<" "<<(tpx[0]*tpx[0]+tpy[0]*tpy[0]+tpz[0]*tpz[0])<<" "<<threshold*threshold<<std::endl;
       //add new components
 
       UInt_t entry = 0;
@@ -52,6 +51,7 @@ namespace rad{
 	if((tpx[entry]*tpx[entry]+tpy[entry]*tpy[entry]+tpz[entry]*tpz[entry])<threshold*threshold){
 	  return -1;
 	}
+	//if(tpz[0]<0)std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<" "<<idx<<" "<<(tpx[0]*tpx[0]+tpy[0]*tpy[0]+tpz[0]*tpz[0])<<" "<<tmass<<std::endl;
 	px[idx]=tpx[entry];
 	py[idx]=tpy[entry];
 	pz[idx]=tpz[entry];

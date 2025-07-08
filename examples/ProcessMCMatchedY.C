@@ -3,6 +3,7 @@
 
 #include "ePICReaction.h"
 #include "ParticleCreator.h"
+#include "ePICParticleModifier.h"
 #include "ePICParticleCreator.h"
 #include "Indicing.h"
 #include "Histogrammer.h"
@@ -48,10 +49,7 @@ void ProcessMCMatchedY(){
   
   //recoil proton (the baryon)
   //epic.setParticleIndex("pprime",1);
-  //epic_particles.RomanPotProton();
-  //epic_particles.MCMatchedRomanPotProton();
-  // epic_particles.MCMatchedB0Proton();
-   epic_particles.MCMatchedFarForwardProton();
+  epic_particles.MCMatchedFarForwardProton();
  
   epic.setParticleIndex("pim",2,-211);
   epic.setParticleIndex("pip",3,211);
@@ -59,27 +57,40 @@ void ProcessMCMatchedY(){
   epic.setParticleIndex("ele",4,11);
   epic.setParticleIndex("pos",5,-11);
   
-  epic.Particles().Sum("Jpsi",{"ele","pos"});
-  epic.Particles().Sum("Y",{"pim","pip","Jpsi"});
+  ////////////////////////////////////////////////
+  /// Create and Modify reconstructed 4-vectors
+  ////////////////////////////////////////////////
+  rad::epic::ePICParticleModifier p_modifier(epic);
+  rad::epic::ePICParticleCreator  p_creator(epic);
+
+  //create J/psi from e+ e-
+  p_creator.Sum("Jpsi",{"ele","pos"});
+  //Fix the 4-vector mass to PDG value
+  p_modifier.FixMassTo("Jpsi",3.0969000);
+  p_modifier.Apply("JpsiMass");
+
+  //create Y from J/psi pi+ pi-
+  p_creator.Sum("Y",{"pim","pip","Jpsi"});
   
   epic.setMesonParticles({"Jpsi","pip","pim"});
   
-  
-  epic.Particles().Miss("calc_pprime",{rad::names::ScatEle().data(),"Y"});
-  
+  //create recoil proton from missing 4-vector, e-' and Y
+  p_creator.Miss("calc_pprime",{rad::names::ScatEle().data(),"Y"});
+  //fix its mass to PDG mass
+  p_modifier.FixMassTo("calc_pprime",0.93956540);//
+  p_modifier.Apply("pprimeMass");
+
   //set this if not detecting proton
   // i.e. semi inclusive measurement
   //epic.setBaryonParticles({"calc_pprime"});
   
+ 
   //set this if we are goign to detect the proton directly
-  //for now RP and B0 dont seem to have the acceptance
-  //at 18x275 atleast!
   epic.setBaryonParticles({"pprime"});
   
   
   //must call this after all particles are configured
   epic.makeParticleMap();
-  
   
   //option filtering of reconstructed tracks
   //epic.Filter("el_OK==1&&po_OK==1","partFilter");
@@ -110,8 +121,10 @@ void ProcessMCMatchedY(){
   rad::rdf::CMAngles(epic,"CM");
 
   //exlusivity
-  rad::rdf::MissMass(epic,"MissMass","{scat_ele,pprime,Y}");
+  rad::rdf::MissMass2(epic,"MissMass2_Meson","{scat_ele,Y}");
+  rad::rdf::MissMass2(epic,"MissMass2","{scat_ele,pprime,Y}");
   rad::rdf::MissP(epic,"MissP_Meson","{scat_ele,Y}");
+  rad::rdf::MissE(epic,"MissE_Meson","{scat_ele,Y}");
   rad::rdf::MissPt(epic,"MissPt_Meson","{scat_ele,Y}");
   rad::rdf::MissPz(epic,"MissPz_Meson","{scat_ele,Y}");
   rad::rdf::MissTheta(epic,"MissTheta_Meson","{scat_ele,Y}");
@@ -136,7 +149,7 @@ void ProcessMCMatchedY(){
   histo.Create<TH1D,double>({"hWhad",";W (hadro final state) [GeV/c^{2}]",100,0,200.},{"Whad"});
   histo.Create<TH1D,double>({"hJMass",";M(e-,e+) [GeV/c^{2}]",100,2.,5.},{"JMass"});
   histo.Create<TH1D,double>({"hYMass",";M(e-,e+, #pi^{+},#pi^{-}) [GeV/c^{2}]",100,2.,5.},{"YMass"});
-  histo.Create<TH1D,double>({"hMissMass",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMass"});
+  histo.Create<TH1D,double>({"hMissMass2",";M^{2}_{miss} [GeV/c^{2}]",200,-50,50},{"MissMass2"});
   
   histo.Create<TH1D,double>({"httop",";t(top vertex) [GeV^{2}]",100,-1,5},{"t_top"});
   histo.Create<TH1D,double>({"htbot",";t(bottom vertex) [GeV^{2}]",100,-1,5},{"t_bot"});
@@ -145,11 +158,15 @@ void ProcessMCMatchedY(){
   
   histo.Create<TH1D,double>({"hcthCM",";cos(#theta_{CM})",100,-1,1},{"CM_CosTheta"});
   histo.Create<TH1D,double>({"hphCM",";#phi_{CM}",100,-TMath::Pi(),TMath::Pi()},{"CM_Phi"});
+  histo.Create<TH1D,double>({"hcthHeli",";cos(#theta_{hel})",100,-1,1},{"Heli_CosTheta"});
+  histo.Create<TH1D,double>({"hphHeli",";#phi_{hel}",100,-TMath::Pi(),TMath::Pi()},{"Heli_Phi"});
   
-  histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',Y)",1000,-100,100},{"MissP_Meson"});
+  histo.Create<TH1D,double>({"hmissMassMeson2",";M^{2}_{miss} [GeV/c^{2}]",300,-150,150},{"MissMass2_Meson"});
+  histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',Y)",1000,250,350},{"MissP_Meson"});
+  histo.Create<TH1D,double>({"hmissE",";E_{miss}(e',Y)",1000,200,350},{"MissE_Meson"});
   histo.Create<TH1D,double>({"hmissPt",";p_{t,miss}(e',Y)",100,0,10},{"MissPt_Meson"});
-  histo.Create<TH1D,double>({"hmissPz",";p_{z,miss}(e',Y)",1000,-100,100},{"MissPz_Meson"});
-  histo.Create<TH1D,double>({"hmissTheta",";#theta_{miss}(e',Y)",100,-TMath::Pi(),TMath::Pi()},{"MissTheta_Meson"});
+  histo.Create<TH1D,double>({"hmissPz",";p_{z,miss}(e',Y)",1000,250,350},{"MissPz_Meson"});
+  histo.Create<TH1D,double>({"hmissTheta",";#theta_{miss}(e',Y)",100,-0.01*TMath::Pi(),0.01*TMath::Pi()},{"MissTheta_Meson"});
  
   //particle momenta
   histo.Create<TH1D,double>({"hpmag_elec",";p_{e'} [GeV/c]",100,-1,20},{"pmag[scat_ele]"});
@@ -190,7 +207,7 @@ void ProcessMCMatchedY(){
   c00->cd(5)->SetLogy();
   histo.DrawSame("hYMass",gPad);
   c00->cd(6)->SetLogy();
-  histo.DrawSame("hMissMass",gPad);
+  histo.DrawSame("hMissMass2",gPad);
 
   TCanvas *c01 = new TCanvas();
   c01->Divide(2,2);
@@ -210,9 +227,9 @@ void ProcessMCMatchedY(){
   c02->cd(2)->SetLogy();
   histo.DrawSame("hmissPt",gPad);
   c02->cd(3)->SetLogy();
-  histo.DrawSame("hmissPz",gPad);
+  histo.DrawSame("hmissMassMeson2",gPad);
   c02->cd(4)->SetLogy();
-  histo.DrawSame("hmissTheta",gPad);
+  histo.DrawSame("hmissE",gPad);
   
   //reco elec kin
   TCanvas *c03 = new TCanvas();
