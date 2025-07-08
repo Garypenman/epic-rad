@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ElectroIonReaction.h"
+#include "ePICParticleCreator.h"
 #include "ePICUtilities.h"
 #include "ReactionUtilities.h"
 #include "StringUtilities.h"
@@ -127,10 +128,12 @@ namespace rad {
     // ---------------- Inline function definitions ----------------
 
     inline ePICReaction::ePICReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t& columns)
-      : ElectroIonReaction{treeName, fileNameGlob, columns} {}
+      : ElectroIonReaction{treeName, fileNameGlob, columns} {
+    }
 
     inline ePICReaction::ePICReaction(const std::string_view treeName, const std::vector<std::string>& filenames, const ROOT::RDF::ColumnNames_t& columns)
-      : ElectroIonReaction{treeName, filenames, columns} {}
+      : ElectroIonReaction{treeName, filenames, columns} {
+    }
 
     inline void ePICReaction::AliasColumns(Bool_t IsEnd) {
       AddType(Rec());
@@ -253,7 +256,7 @@ namespace rad {
 
       if (IsTruthMatched()) {
         // Ensure tru and rec columns are defined together and add resolution columns.
-        Filter(Form("bool(%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty() +1); ",
+        Filter(Form("bool((%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty())*0 +1); ",
                     (Truth() + "pmag").data(),
                     (Truth() + "theta").data(),
                     (Truth() + "phi").data(),

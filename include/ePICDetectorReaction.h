@@ -23,6 +23,7 @@ namespace rad{
     using rad::names::data_type::Truth;
     using rad::utils::createFunctionCallString;
     using rad::utils::replaceAll;
+    using RVecS = ROOT::RVec<std::string>;
 
     //! ePICDetectorReaction: Handles association of detector objects and tracks to particles for ePIC analyses
     class ePICDetectorReaction : public ePICReaction {
@@ -45,7 +46,7 @@ namespace rad{
        * @param types   List of cluster collection names.
        * @param members Data fields within each cluster collection to associate.
        */
-      void AssociateClusters(const std::vector<std::string>& types,const std::vector<std::string>& members ){
+      void AssociateClusters(const RVecS& types,const RVecS& members ){
         AssociateObjects("clusters",types,members);
       }
 
@@ -54,7 +55,7 @@ namespace rad{
        * @param types   List of track collection names.
        * @param members Data fields within each track collection to associate.
        */
-      void AssociateTracks(const std::vector<std::string>& types,const std::vector<std::string>& members ){
+      void AssociateTracks(const RVecS& types,const RVecS& members ){
         AssociateObjects("tracks",types,members);
       }
 
@@ -65,8 +66,13 @@ namespace rad{
        * @param types   List of collection names for this object type.
        * @param members Data field names to extract from each collection.
        */
-      void AssociateObjects(const std::string& object,const std::vector<std::string>& types,const std::vector<std::string>& members);
+      void AssociateObjects(const std::string& object,const RVecS& types,const RVecS& members);
 
+
+      /**
+       * Getter for podio metadata
+       */
+      rad::podio::PodioMetadata &PodioInfo(){return _podio_meta;}
     private:
       // Holds podio metadata for the currently loaded file(s)
       rad::podio::PodioMetadata _podio_meta;
@@ -93,7 +99,7 @@ namespace rad{
       _podio_meta = rad::podio::PodioMetadata(filenames[0].data());
     }
 
-    inline void ePICDetectorReaction::AssociateObjects(const std::string& object, const std::vector<std::string>& types, const std::vector<std::string>& members) {
+    inline void ePICDetectorReaction::AssociateObjects(const std::string& object, const RVecS& types, const RVecS& members) {
       // Exit if no types provided
       if (types.empty()) return;
 

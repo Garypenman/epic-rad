@@ -57,6 +57,13 @@ void ProcessMCMatchedZ(){
   epic.Particles().Miss("calc_n",{rad::names::ScatEle().data(),"Zc"});
   epic.setBaryonParticles({"calc_n"});
 
+  ////////////////////////////////////////////////
+  /// Modify reconstructed 4-vectors
+  ////////////////////////////////////////////////
+  // rad::epic::ePICParticleModifier modifyier(epic);
+  // modifyer.("calc_n",0.93956540);
+  // modifyer.Apply("changes");
+
   //must call this after all particles are configured
   epic.makeParticleMap();
   

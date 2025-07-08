@@ -74,6 +74,7 @@ namespace rad{
                                           const ROOT::RVec<Tind1>& local_collIds,
                                           const ROOT::RVec<Tind2>& order)
     {
+      // std::cout<<"combineCollections "<<collections<<" "<<local_collIds<<" "<<order<<std::endl;
       auto Nelements = local_collIds.size();
       ROOT::RVec<Tval> result(Nelements, rad::constant::InvalidEntry<Tval>());
       for (uint i = 0; i < Nelements; ++i) {
@@ -101,6 +102,7 @@ namespace rad{
                                                   const ROOT::RVec<Tval>& object_vals)
     {
       auto n_rec = rec_begin.size();
+      //std::cout<< "vecOfOneToMany " << rec_begin<<" "<<rec_end<<" "<<object_vals<<std::endl;
       //vals vector has 1 entry for every element in rec_begin (e.g. for every reconstructed particle)
       ROOT::RVec<ROOT::RVec<Tval>> vals;
       vals.reserve(n_rec);
