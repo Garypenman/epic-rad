@@ -19,8 +19,7 @@ void ProcessMCMatchedY(){
   
   gBenchmark->Start("df total");
   
-  rad::config::ePICReaction epic{"events","/home/dglazier/EIC/data/Y4260_May/jpac_y4260_18_275_10day_0_recon.root"};
-  //rad::config::ePICReaction epic{"events","~/Dropbox/EIC/Spectroscopy/SpectroscopyWorkshop25/Y/data/jpac_y4260_18_275_10day_*_recon.root"};
+  rad::config::ePICReaction epic{"events","/w/work5/home/garyp/eic/Farm/Y4260/recon/*.root"};
   epic.SetBeamsFromMC(); //for this file 0=ebeam 1=pbeam
   
   //epic.AliasColumns();
@@ -47,11 +46,7 @@ void ProcessMCMatchedY(){
   //epic_particles.MCMatchedLowQ2Electron();
   
   //recoil proton (the baryon)
-  //epic.setParticleIndex("pprime",1);
-  //epic_particles.RomanPotProton();
-  //epic_particles.MCMatchedRomanPotProton();
-  // epic_particles.MCMatchedB0Proton();
-   epic_particles.MCMatchedFarForwardProton();
+  epic_particles.MCMatchedFarForwardProton();
  
   epic.setParticleIndex("pim",2,-211);
   epic.setParticleIndex("pip",3,211);
