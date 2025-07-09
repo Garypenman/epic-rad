@@ -1,174 +1,167 @@
+// ePICDetectorReaction.h
 #pragma once
 
-//!  Derived class to configure ePIC root files with associations made to detector and track info
+//! Derived class for configuring ePIC root files with associations to detector and track info
 
 /*!
-  Use ConfigReaction classes to setup data analysis and calculations
-  for particular hadronic final states.
-  This derived class is configured for ePIC files with fixed particle order. It also uses podio to link particles to their full detector reconstruction
+  ePICDetectorReaction helps set up data analysis and calculations
+  for specific hadronic final states using ePIC files.
+  This class configures files with a fixed particle order, and
+  uses podio to link particles to their full detector reconstruction.
 */
+
 #include "ePICReaction.h"
 #include "PodioMetadata.h"
+#include "PodioRelated.h"
 #include "RVecHelpers.h"
 #include <TFile.h>
 #include <TTree.h>
-
 
 namespace rad{
   namespace config{
     using rad::names::data_type::Rec;
     using rad::names::data_type::Truth;
+    using rad::utils::createFunctionCallString;
+    using rad::utils::replaceAll;
+    using RVecS = ROOT::RVec<std::string>;
 
- 
-    //! Class definition
-
+    //! ePICDetectorReaction: Handles association of detector objects and tracks to particles for ePIC analyses
     class ePICDetectorReaction : public ePICReaction {
-
 
     public:
 
-      ePICDetectorReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ePICReaction{treeName,fileNameGlob,columns} {
-	//open file and copy podio table
-	//auto file = std::unique_ptr<TFile>{TFile::Open(fileNameGlob.data())};
-	TChain chain("podio_metadata");
-	chain.Add(fileNameGlob.data());
+      /**
+       * Constructor: Open files matching a glob pattern, set up tree and columns.
+       * Also loads associated podio metadata for collection IDs.
+       */
+      ePICDetectorReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ={} );
 
-	_podio_meta = rad::epic::PodioMetadata(chain.GetListOfFiles()->At(0)->GetTitle());
-      }
-    ePICDetectorReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ePICReaction{treeName,filenames,columns} {
-      //open file and copy podio table
-      _podio_meta = rad::epic::PodioMetadata(filenames[0].data());
+      /**
+       * Constructor: Accepts vector of file names. Sets up tree, columns, and podio metadata.
+       */
+      ePICDetectorReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ={} );
 
+      /**
+       * Associates clusters data collections to corresponding particles.
+       * @param types   List of cluster collection names.
+       * @param members Data fields within each cluster collection to associate.
+       */
+      void AssociateClusters(const RVecS& types,const RVecS& members ){
+        AssociateObjects("clusters",types,members);
       }
 
       /**
-       * Configure association of clusters data to particles
+       * Associates tracks data collections to corresponding particles.
+       * @param types   List of track collection names.
+       * @param members Data fields within each track collection to associate.
        */
-      void AssociateClusters(const std::vector<std::string>& types,const std::vector<std::string>& members ){
-	AssociateObjects("clusters",types,members);
-      }
-     /**
-       * Configure association of tracks data to particles
-       */
-      void AssociateTracks(const std::vector<std::string>& types,const std::vector<std::string>& members ){
-	AssociateObjects("tracks",types,members);
+      void AssociateTracks(const RVecS& types,const RVecS& members ){
+        AssociateObjects("tracks",types,members);
       }
 
       /**
-       * Configure given associations to create objects which may 
-       * be used to create columns matched to reconstructed particles
+       * General association function for any detector object (e.g. clusters, tracks).
+       * Creates columns matched to reconstructed particles.
+       * @param object  Type of object (e.g. "clusters", "tracks").
+       * @param types   List of collection names for this object type.
+       * @param members Data field names to extract from each collection.
        */
-      void AssociateObjects(const string& object,const std::vector<std::string>& types,const std::vector<std::string>& members){
+      void AssociateObjects(const std::string& object,const RVecS& types,const RVecS& members);
 
-	ROOT::RVecU collIndices; //create indices for the given collection types
-      
-	for(const auto& assoc_name:types){ //loop over the specified detector associations
-	  if(_podio_meta.Exists(assoc_name)==false){
-	    std::cerr<<"Warning : ePICDetectorReaction::AssociateObjects, no detector object "
-		     <<assoc_name<<" in podio_metadata. "<<std::endl;
-	    continue;
-	  }
-	  
-	  //save the collectionID value in indices
-	  //this allows us to define a local index for the collection
-	  collIndices.push_back(_podio_meta.CollectionIDFor(assoc_name));
-	  std::cout<<"AssociateObjects "<<object<<" "<<assoc_name<<" "<<collIndices.back()<<std::endl;
-	}
-      
-        //function to map hash collectionID vector to index in local defined vector.
-	//copy collIndices
-	auto LocalCollIdx= [collIndices](const ROOT::RVecU& collID){
-	  ROOT::RVecI localID(collID.size());
-	  uint i = 0;
-	  for(const auto id:collID){
-	    auto dist =rad::helpers::findIndex(collIndices,id);
-	    if(dist==collIndices.size()) localID[i]=-1;
-	    else localID[i]=dist;
-
-	    //if(localID[i]>-1)cout<<"LocalCollIdx"<<i<<" "<<id<<" "<<localID[i]<<std::endl;
-  
-	    ++i;
-	  }
-	  return localID;
-	};
-	
-	//define collection indices for this object association
-	auto collIdxsName = object+"_idxs";
-	Define(collIdxsName , LocalCollIdx, {"_ReconstructedParticles_"+object+".collectionID"});
-
-	//now create a function to define the associated vector of member to ReconstructedParticle
-	auto CreateAssocVector = [](const ROOT::RVec<ROOT::RVecF>& all,const ROOT::RVecI& localCollIdx,const ROOT::RVecI& idxs){
-	  auto Nelements = localCollIdx.size();
-    
-	  ROOT::RVecF result(Nelements);
-	  //loop over ReconstructedParticles and get the associated data
-	  for(uint i=0;i<Nelements;++i){
-	    if(localCollIdx[i]<0) result[i]=0; //return 0 if collection not requested
-	    else result[i] = all[localCollIdx[i]][idxs[i]]; //get the value at specific collection and index
-	  }
-	  
-	  return result;
-	};
-	
-	//loop over given data members and create list for each association 
-	for(const auto& member:members){//loop over the data member we are interested in
-	  std::string strNames;
-	  for(const auto& assoc_name:types){ //loop over the specified detector associations
-	    
-	    strNames+=assoc_name; //association name  e.g. CentralCKFTracks
-	    strNames+="."+member; //plus specific data member required e.g. momentum.x
-	    strNames+=","; //seperate each member by a comma e.g. CentralCKFTracks.momentum.x,
-	    
-	  }
-	  strNames.pop_back();//remove last ,
-	  
-	  //make a map of corresponding values
-	  TString mapName = object+member+DoNotWriteTag();
-	  mapName.ReplaceAll(".","_");
-	  Define(mapName,Form("ROOT::RVec<ROOT::RVecF>{%s}",strNames.data()));
-	  //unravel map into synchronised (with ReconstructedParticles ordering)
-	  TString assocName = Rec()+object+member;
-	  assocName.ReplaceAll(".","_");
-	  Define(assocName,CreateAssocVector,{mapName.Data(), collIdxsName,"_ReconstructedParticles_"+object+".index"});
-	  
-	  //reorder to match truth and rec if required
-	  if(rad::config::ColumnExists(Truth()+"match_id",CurrFrame()) == true ){
-	    RedefineExpr(std::string(assocName), std::string(Form("rad::helpers::Reorder(%s,%s,%s,%s)",assocName.Data(),(Rec()+"match_id").data(),(Truth()+"match_id").data(),(Truth()+"n").data())) );
-	  }
-	}
-	
-      }
 
       /**
-       * do not write columns containing "_epicdet"
+       * Getter for podio metadata
        */
-      // void RemoveSnapshotColumns(std::vector<string>& cols) override{
-
-      // 	ePICReaction::RemoveSnapshotColumns(cols);
-      // 	/* moved to ConfigReaction
-      // 	cols.erase( std::remove_if( cols.begin(), cols.end(),
-      // 			       []( const string& col ) -> bool
-      // 			       { return col.find("_epicdet") != std::string::npos; } ),
-      // 		    cols.end() );
-      // 	*/
-      // }
-  
+      rad::podio::PodioMetadata &PodioInfo(){return _podio_meta;}
     private:
-      rad::epic::PodioMetadata _podio_meta;
-      
-      //  podio::CollectionIDTable _idTable; //to be cloned from podio_metadata:events___idTable
-      // podio::CollectionIDTable *_idTable=nullptr; //to be cloned from podio_metadata:events___idTable, it has a deleted constructor so cannot use copy contructor
-      //std::shared_ptr<podio::CollectionIDTable> _idTable; //to be cloned from podio_metadata:events___idTable
-      /**
-       * Local index for particle associated collection IDs
-       * should be in range 0 - N declared trackers
-       */
-      /* ROOT::RVecU _clustersCollectionIdxs; */
-      /* ROOT::RVecU _tracksCollectionIdxs; */
-      /* ROOT::RVecU _particleIDsCollectionIdxs; */
-      /* ROOT::RVecU _startVertexCollectionIdxs; */
-      /* ROOT::RVecU _particleIDUsedCollectionIdxs; */
-      
+      // Holds podio metadata for the currently loaded file(s)
+      rad::podio::PodioMetadata _podio_meta;
     };
-  }
-}
+
+    ///////////////////////////////////////////////
+    /// Inline function implementations
+    ///////////////////////////////////////////////
+
+    inline ePICDetectorReaction::ePICDetectorReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t& columns )
+      : ePICReaction{treeName,fileNameGlob,columns} // initialize base class
+    {
+      // Open podio metadata table using TChain and copy metadata for the first file
+      TChain chain("podio_metadata");
+      chain.Add(fileNameGlob.data());
+
+      _podio_meta = rad::podio::PodioMetadata(chain.GetListOfFiles()->At(0)->GetTitle());
+    }
+
+    inline ePICDetectorReaction::ePICDetectorReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t& columns )
+      : ePICReaction{treeName,filenames,columns} // initialize base class
+    {
+      // Copy podio metadata from the first file in the vector
+      _podio_meta = rad::podio::PodioMetadata(filenames[0].data());
+    }
+
+    inline void ePICDetectorReaction::AssociateObjects(const std::string& object, const RVecS& types, const RVecS& members) {
+      // Exit if no types provided
+      if (types.empty()) return;
+
+      ROOT::RVecU collIndices;
+      collIndices.reserve(types.size());
+
+      // Collect valid collection names and their IDs, warn if not found in metadata
+      std::vector<std::string> valid_types;
+      for (const auto& assoc_name : types) {
+        if (!_podio_meta.Exists(assoc_name)) {
+          std::cerr << "Warning: ePICDetectorReaction::AssociateObjects - No detector object "
+                    << assoc_name << " in podio_metadata." << std::endl;
+          continue;
+        }
+        collIndices.push_back(_podio_meta.CollectionIDFor(assoc_name));
+        valid_types.push_back(assoc_name);
+      }
+      if (valid_types.empty()) return;
+
+      // Set up function to map event collection IDs to local indices for this object type
+      auto local_collIDs = rad::podio::ConvertCollectionId(collIndices);
+      auto coll_IdxsName = object + "_idxs";
+      Define(coll_IdxsName, local_collIDs, {"_ReconstructedParticles_" + object + ".collectionID"});
+
+      // For each data member, define a vector for each association and create the corresponding columns
+      for (const auto& member : members) {
+        std::ostringstream memberNames;
+        for (const auto& assoc_name : valid_types) {
+          memberNames << assoc_name << '.' << member << ',';
+        }
+        std::string memberNamesStr = memberNames.str();
+        if (!memberNamesStr.empty()) memberNamesStr.pop_back(); // remove last comma
+
+        // Create column name (replace '.' with '_')
+        auto collListName = object + member + DoNotWriteTag();
+        replaceAll(collListName, ".", "_");
+
+        // Get type of this member from the first valid collection
+        auto member_type = CurrFrame().GetColumnType(valid_types[0] + '.' + member);
+        Define(collListName, Form("ROOT::RVec<%s>{%s}", member_type.data(), memberNamesStr.data()));
+
+        // Set up transformation for the object collection
+        auto rec_index = "_ReconstructedParticles_" + object + ".index";
+        std::string rec_begin = Form("ReconstructedParticles.%s_begin", object.data());
+        std::string rec_end = Form("ReconstructedParticles.%s_end", object.data());
+        auto func_rec_object = createFunctionCallString("rad::podio::combineOneToMany",
+                                                        collListName, coll_IdxsName, rec_index,
+                                                        rec_begin, rec_end);
+	
+        std::string rec_object = Rec() + object + "_" + member;
+        replaceAll(rec_object, ".", "_");
+
+        Define(rec_object, func_rec_object);
+
+        // If truth/reco matching exists, reorder to align with truth particles
+        if (rad::config::ColumnExists(Truth() + "match_id", CurrFrame())) {
+          auto func_rec_match = createFunctionCallString("rad::helpers::Reorder",
+                                                         rec_object, Rec() + "match_id", Truth() + "match_id", Truth() + "n");
+          RedefineExpr(rec_object, func_rec_match);
+        }
+      }
+    }
+
+  } // namespace config
+} // namespace rad

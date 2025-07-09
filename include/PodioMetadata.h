@@ -1,11 +1,12 @@
 #pragma once
 
+#include "StringUtilities.h"
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RVec.hxx>
 #include <string>
 
 namespace rad{
-  namespace epic{
+  namespace podio{
     using RVecS = ROOT::RVec<std::string>;
     using RVecU  = ROOT::RVecU;
     
@@ -42,6 +43,10 @@ namespace rad{
 	auto it = std::find(_names.begin(),_names.end(),name);
 	UInt_t index =  it - _names.begin();
 	return _collectionIDs[index];
+      }
+
+      RVecS FilterNames(std::string sub_string){
+	return rad::utils::filterStrings(_names,sub_string);
       }
     private:
       
