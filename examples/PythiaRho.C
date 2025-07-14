@@ -55,9 +55,12 @@ void PythiaRho(){
   //e.g. t distributions
   epic.setBaryonParticles({"prot"});
   //epic.setBaryonParticles({});
-  
+
   epic.Particles().Sum("rho",{"pip","pim"});
   epic.setMesonParticles({"pip","pim"});
+
+  //Also calculate proton as a missing particle
+  p_creator.Miss("calc_prot",{rad::names::ScatEle().data(),"rho"});
 
   //must call this after all particles are configured
   epic.makeParticleMap();
@@ -80,8 +83,6 @@ void PythiaRho(){
 
   //masses column name, {+ve particles}, {-ve particles}
   rad::rdf::MissMass(epic,"W","{scat_ele}");
-  rad::rdf::MissMass(epic,"MissMass","{scat_ele,pip,pim,prot}");
-  rad::rdf::MissMass(epic,"MissMassRho","{scat_ele,pip,pim}");
   rad::rdf::Mass(epic,"RhoMass","{pip,pim}");
   rad::rdf::Mass(epic,"DppMass","{pip,prot}");
   rad::rdf::Mass(epic,"D0Mass","{pim,prot}");
@@ -100,10 +101,19 @@ void PythiaRho(){
   rad::rdf::gn2s0s0s12::HelicityAngles(epic,"Heli");
   
   //exlusivity
+  rad::rdf::MissMass(epic,"MissMass_Meson","{scat_ele,rho}");
   rad::rdf::MissP(epic,"MissP_Meson","{scat_ele,rho}");
   rad::rdf::MissPt(epic,"MissPt_Meson","{scat_ele,rho}");
   rad::rdf::MissPz(epic,"MissPz_Meson","{scat_ele,rho}");
   rad::rdf::MissTheta(epic,"MissTheta_Meson","{scat_ele,rho}");
+  
+  rad::rdf::MissMass(epic,"MissMass_All","{scat_ele,pip,pim,prot}");
+  rad::rdf::MissP(epic,"MissP_All","{scat_ele,prot,rho}");
+  rad::rdf::MissPt(epic,"MissPt_All","{scat_ele,prot,rho}");
+  rad::rdf::MissPz(epic,"MissPz_All","{scat_ele,prot,rho}");
+  rad::rdf::MissTheta(epic,"MissTheta_All","{scat_ele,prot,rho}");
+
+  rad::rdf::DeltaPhi(epic,"DeltaPhi_Prot","{prot,prot_calc}");
   /*
   */
   
@@ -134,7 +144,6 @@ void PythiaRho(){
   histo.Create<TH1D,double>({"hRhoMass",";M(#pi-,#pi+) [GeV/c^{2}]",100,.2,3.},{"RhoMass"});
   histo.Create<TH1D,double>({"hD0Mass",";M(#pi-p) [GeV/c^{2}]",100,1,3.},{"D0Mass"});
   histo.Create<TH1D,double>({"hDppMass",";M(#pi+p) [GeV/c^{2}]",100,1,3.},{"DppMass"});
-  histo.Create<TH1D,double>({"hMissMass",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMass"});
   
   histo.Create<TH1D,double>({"httop",";t(top vertex) [GeV^{2}]",100,-1,5},{"t_top"});
   histo.Create<TH1D,double>({"htbot",";t(bottom vertex) [GeV^{2}]",100,-1,5},{"t_bot"});
@@ -144,10 +153,21 @@ void PythiaRho(){
   histo.Create<TH1D,double>({"hcthCM",";cos(#theta_{CM})",100,-1,1},{"CM_CosTheta"});
   histo.Create<TH1D,double>({"hphCM",";#phi_{CM}",100,-TMath::Pi(),TMath::Pi()},{"CM_Phi"});
   
-  histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',Y)",1000,-100,100},{"MissP_Meson"});
-  histo.Create<TH1D,double>({"hmissPt",";p_{t,miss}(e',Y)",100,0,10},{"MissPt_Meson"});
-  histo.Create<TH1D,double>({"hmissPz",";p_{z,miss}(e',Y)",1000,-100,100},{"MissPz_Meson"});
-  histo.Create<TH1D,double>({"hmissTheta",";#theta_{miss}(e',Y)",100,-TMath::Pi(),TMath::Pi()},{"MissTheta_Meson"});
+  histo.Create<TH1D,double>({"hMissMass_Meson",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMass_Meson"});
+  histo.Create<TH1D,double>({"hmissP_Meson",";p_{miss}(e',Y)",1000,-100,100},{"MissP_Meson"});
+  histo.Create<TH1D,double>({"hmissPt_Meson",";p_{t,miss}(e',Y)",100,0,10},{"MissPt_Meson"});
+  histo.Create<TH1D,double>({"hmissPz_Meson",";p_{z,miss}(e',Y)",1000,-100,100},{"MissPz_Meson"});
+  histo.Create<TH1D,double>({"hmissTheta_Meson",";#theta_{miss}(e',Y)",100,-TMath::Pi(),TMath::Pi()},{"MissTheta_Meson"});
+
+  histo.Create<TH1D,double>({"hMissMass_All",";M_{miss} [GeV/c^{2}]",1000,-10,10},{"MissMass_All"});
+  histo.Create<TH1D,double>({"hmissP_All",";p_{miss}(e',Y)",1000,-100,100},{"MissP_All"});
+  histo.Create<TH1D,double>({"hmissPt_All",";p_{t,miss}(e',Y)",100,0,10},{"MissPt_All"});
+  histo.Create<TH1D,double>({"hmissPz_All",";p_{z,miss}(e',Y)",1000,-100,100},{"MissPz_All"});
+  histo.Create<TH1D,double>({"hmissTheta_All",";#theta_{miss}(e',Y)",100,-TMath::Pi(),TMath::Pi()},{"MissTheta_All"});
+
+  histo.Create<TH1D,double>({"hDeltaPhi_Prot",";M_{miss} [GeV/c^{2}]",100,-5,5},{"DeltaPhi_Prot"});
+
+  
   //particle momenta
   histo.Create<TH1D,double>({"hpmag_elec",";p_{e'} [GeV/c]",100,-1,20},{"pmag[scat_ele]"});
   histo.Create<TH1D,double>({"heta_elec",";#eta_{e'} ",100,-10,10},{"eta[scat_ele]"});

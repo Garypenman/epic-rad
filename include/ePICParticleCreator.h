@@ -43,7 +43,9 @@ namespace rad{
     /// functions which depend on other particles
     template<typename Tp, typename Tm,typename Tmatch>
     int ParticleMCMatched(const double threshold,const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,RVec<Tmatch>& imatch){
-      //add new components
+
+      //check for valid mc particle
+      if(idx==-1) return -1;
 
       UInt_t entry = 0;
       if(tpx.empty()==false){
@@ -51,8 +53,9 @@ namespace rad{
 	if((tpx[entry]*tpx[entry]+tpy[entry]*tpy[entry]+tpz[entry]*tpz[entry])<threshold*threshold){
 	  return -1;
 	}
-	//if(tpz[0]<0)std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<" "<<idx<<" "<<(tpx[0]*tpx[0]+tpy[0]*tpy[0]+tpz[0]*tpz[0])<<" "<<tmass<<std::endl;
-	px[idx]=tpx[entry];
+
+	//add new components
+  	px[idx]=tpx[entry];
 	py[idx]=tpy[entry];
 	pz[idx]=tpz[entry];
 	m[idx] = tmass;
@@ -118,7 +121,7 @@ namespace rad{
 	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.y","rp_py");
 	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.z","rp_pz");
 	
-	//Note threshold = 10
+	//Note threshold = 10 GeV
 	Reaction()->Define(Rec()+"RPproton",Form("rad::epic::ParticleMCMatched(10,%s,rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"RPproton");
       }
@@ -127,7 +130,7 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
 	
-	//Note threshold = 10
+	//Note threshold = 10 GeV
 	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::ParticleMCMatched(10,%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
