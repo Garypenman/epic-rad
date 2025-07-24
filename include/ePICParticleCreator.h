@@ -43,18 +43,19 @@ namespace rad{
     /// functions which depend on other particles
     template<typename Tp, typename Tm,typename Tmatch>
     int ParticleMCMatched(const double threshold,const int idx,const RVec<Tp> &tpx,const  RVec<Tp> &tpy,const  RVec<Tp> &tpz, const Tm &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,RVec<Tmatch>& imatch){
-      //add new components
       
+      //check for valid mc particle
       if(idx==-1) return -1;
-      
+
       UInt_t entry = 0;
       if(tpx.empty()==false){
 	//check threshold
 	if((tpx[entry]*tpx[entry]+tpy[entry]*tpy[entry]+tpz[entry]*tpz[entry])<threshold*threshold){
 	  return -1;
 	}
-	//if(tpz[0]<0)std::cout<<"ParticleMCMatched "<<m<<" "<<tpz<<" "<<idx<<" "<<(tpx[0]*tpx[0]+tpy[0]*tpy[0]+tpz[0]*tpz[0])<<" "<<tmass<<std::endl;
-	px[idx]=tpx[entry];
+
+	//add new components
+  	px[idx]=tpx[entry];
 	py[idx]=tpy[entry];
 	pz[idx]=tpz[entry];
 	m[idx] = tmass;
@@ -99,7 +100,6 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
 	
-	//Note threshold = 10
 	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::Particle(B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
@@ -109,12 +109,13 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.y","ZDC_py");
 	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.z","ZDC_pz");
 	
-	//Note threshold = 10 - needs tweaked at some point
 	Reaction()->Define(Rec()+"ZDClambda",Form("rad::epic::Particle(ZDC_px,ZDC_py,ZDC_pz,1.1115683,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
 	Reaction()->AddParticleName(Rec()+"ZDClambda");
 
       }
       
+      //to do - swap above functions to call this one
+      //and check for bugs
       void DetectorParticle(const std::string name, const std::string branchname, const std::string aliasname, const double mass){
 	std::string smass = to_string(mass);
 	
@@ -139,7 +140,7 @@ namespace rad{
 	Reaction()->setBranchAlias(branchname+".momentum.y",aliasname+"_py");
 	Reaction()->setBranchAlias(branchname+".momentum.z",aliasname+"_pz");
 	
-	//string utility to replace form
+	//to do - string utility to replace form
 	//make function
 	Reaction()->Define(Rec()+name,Form("rad::epic::ParticleMCMatched(%s,%s,%s_px,%s_py,%s_pz,%s,%spx,%spy,%spz,%sm,%s)",sthresh.data(),matchname.data(),aliasname.data(),aliasname.data(),aliasname.data(),smass.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+name);
@@ -166,7 +167,8 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.x","B0_px");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
-
+	
+	//to do - make this work with the new MCMatchedParticle intermediate function style above
 	//if RP exists use that
 	//if not consider B0 candidates
 	//Note B0 threshold = 10
@@ -174,6 +176,8 @@ namespace rad{
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
       
+      //probably redundant
+      //as this approach wont/cant work per event
       bool getMCMatchedForwardProtonStatus(){
 	return mcmatched_forward_proton;
       }
