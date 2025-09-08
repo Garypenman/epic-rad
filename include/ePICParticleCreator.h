@@ -73,7 +73,7 @@ namespace rad{
     public:
       
     ePICParticleCreator() : mcmatched_forward_proton(false) {};
-    ePICParticleCreator(rad::config::ConfigReaction& cr) : rad::config::ParticleCreator{cr}{}, mcmatched_forward_proton(false);
+    ePICParticleCreator(rad::config::ConfigReaction& cr) : rad::config::ParticleCreator{cr}, mcmatched_forward_proton(false) {};
       
       //Detector functions (not mc matched)
       void LowQ2Electron() {

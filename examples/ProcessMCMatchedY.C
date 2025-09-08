@@ -28,26 +28,9 @@ void ProcessMCMatchedY(){
   //epic.AliasColumnsAndMC();
   epic.AliasColumnsAndMatchWithMC();
   
-  //these work but only if MCScatteredElectrons and MCScatteredProtons only have 1 particle in them??
-  //apparently this isnt always the case. Benching them for now.
-  //rad::indice::UseAsID(index, offset) offset in case beam particle included in record
   epic.setScatElectron(rad::indice::UseAsID(0,2), {"MCScatteredElectrons_objIdx.index"});
   epic.setParticleIndex("pprime",rad::indice::UseAsID(0,2),{"MCScatteredProtons_objIdx.index"},2212);
 
-  
-  //particle creator
-  rad::epic::ePICParticleCreator epic_particles{epic};
-  
-  //SUBTRACT 2 FROM WHATEVER THE INDEXING IS IN THE 
-  //MCPARTICLES/HEPMC3 LIST, SINCE BEAM PARTICLES ARE
-  //REMOVED FROM THE LIST
-  //scattered electron
-  //THIS SHOULD NOT BE NEEDED NOW lowQ2 is in ReconstructedParticles
-  //epic_particles.LowQ2Electron();
-  //epic_particles.MCMatchedLowQ2Electron();
-  
-  //recoil proton (the baryon)
-  epic_particles.MCMatchedFarForwardProton();
  
   epic.setParticleIndex("pim",2,-211);
   epic.setParticleIndex("pip",3,211);
@@ -60,7 +43,10 @@ void ProcessMCMatchedY(){
   ////////////////////////////////////////////////
   rad::epic::ePICParticleModifier p_modifier(epic);
   rad::epic::ePICParticleCreator  p_creator(epic);
-
+  
+  //recoil proton (the baryon)
+  p_creator.MCMatchedFarForwardProton();
+  
   //create J/psi from e+ e-
   p_creator.Sum("Jpsi",{"ele","pos"});
   //Fix the 4-vector mass to PDG value
