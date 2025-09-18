@@ -1,10 +1,13 @@
 #pragma once
 
 #include "ParticleCreator.h"
+#include "ePICUtilities.h"
+#include "ElectroIonReaction.h"
 #include "DefineNames.h"
 
 namespace rad{
   namespace epic{
+    
     using rad::names::data_type::Rec;
     using rad::names::data_type::Truth;
 
@@ -134,7 +137,7 @@ namespace rad{
 	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::ParticleMCMatched(10,%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
-      
+     
       void MCMatchedFarForwardProton(const std::string name="pprime") {
 	MCMatchedRomanPotProton(name);
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.x","B0_px");
@@ -147,6 +150,25 @@ namespace rad{
 	Reaction()->Define(Rec()+"B0proton",Form("if(rec_RPproton==-1) return rad::epic::ParticleMCMatched(10,%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s); return -1;",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
      }
+
+      void MCMatchedZDCNeutron(const std::string name="nprime") {
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCNeutrals.momentum.x","ZDC_px");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCNeutrals.momentum.y","ZDC_py");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCNeutrals.momentum.z","ZDC_pz");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCNeutrals.mass","ZDC_m");
+	auto type = string("ZDC_");
+	auto tru_type = rad::names::data_type::Truth();
+
+	auto epicReaction = dynamic_cast<rad::config::ElectroIonReaction*>(Reaction());
+	Reaction()->RedefineViaAlias(type + "px",
+				     rad::epic::UndoAfterBurn<float, double>{epicReaction->P4BeamIon(),epicReaction->P4BeamEle(), -0.025},
+			 {type + "px", type + "py", type + "pz", type + "m"});
+
+	//Note threshold = 10 GeV
+	Reaction()->Define(Rec()+"ZDCneutron",Form("rad::epic::ParticleMCMatched(20,%s,ZDC_px,ZDC_py,ZDC_pz,%lf,%spx,%spy,%spz,%sm,%s)",name.data(),rad::constant::M_neu(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
+	Reaction()->AddParticleName(Rec()+"ZDCneutron");
+      }
+      
    };
     
   }

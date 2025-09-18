@@ -51,7 +51,7 @@ namespace rad {
         return px;
       }
 
-    private:
+    protected:
       Float_t _crossAngle{-0.025};          // Crossing angle in radians
       RotationX _rotAboutX;                 // Rotation about X axis
       RotationY _rotAboutY;                 // Rotation about Y axis
@@ -90,6 +90,29 @@ namespace rad {
         px[idx] = a.X();
         py[idx] = a.Y();
         pz[idx] = a.Z();
+      }
+      /**
+       * @brief Undo afterburner transformation for a single particle.
+       * 
+       * @param px  x momentum.
+       * @param py  y momentum.
+       * @param pz  z momentum.
+       * @param m  mass.
+       */
+      void undoAfterburn(momeType_t& px, momeType_t& py, momeType_t& pz, const massType_t& m) const {
+        auto a = ROOT::Math::PxPyPzMVector(px, py, pz, m);
+        // Step 1: Boost to CoM frame
+        a = boost(a, _vBoostToCoM);
+        // Step 2: Rotate to align with Z axis
+        a = _rotAboutY(a);
+        a = _rotAboutX(a);
+        // Step 3: Boost back to head-on frame
+        a = boost(a, _vBoostToHoF);
+
+        // Update momentum components
+        px = a.X();
+        py = a.Y();
+        pz = a.Z();
       }
     };
 
@@ -130,5 +153,42 @@ namespace rad {
         p_beam = boost(p_beam, _vBoostToHoF);
         e_beam = boost(e_beam, _vBoostToHoF);
      }
+
+
+       /**
+     * @brief Class to undo afterburner transformations on particle momenta.
+     * 
+     * This instance works on scalar values, not vectors
+     */
+    template<typename Tp, typename Tm>
+    class UndoAfterBurnSingle : public UndoAfterBurn<Tp,Tm> {
+      using momeType_t = Tp;
+      using massType_t = Tm;
+
+    public:
+  public:
+      /**
+       * @brief Constructor. Initializes the undo parameters using beam vectors and crossing angle.
+       */
+      UndoAfterBurnSingle(PxPyPzMVector p_beam, PxPyPzMVector e_beam, Float_t angle = -0.025)
+        :UndoAfterBurn<Tp,Tm> (p_beam,e_beam,angle) { 
+      }
+
+      
+      /**
+       * @brief Applies the undo transformation to all particles in the event.
+       * 
+       * @param px x component of momentum.
+       * @param py y component of momentum.
+       * @param pz z component of momentum.
+       * @param m mass.
+       * @return Transformed px(for chaining if desired).
+       */
+      momeType_t operator()(momeType_t& px, momeType_t& py, momeType_t& pz, const massType_t& m) const {
+	this->undoAfterburn(px, py, pz, m);
+        return px;
+      }
+    };
+
   } // namespace epic
 } // namespace rad
