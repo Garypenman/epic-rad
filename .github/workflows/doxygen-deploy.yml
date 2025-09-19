@@ -1,0 +1,58 @@
+name: Deploy Doxygen Documentation
+
+on:
+  # Runs on pushes targeting the new_start branch
+  push:
+    branches: ["master"]
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install Doxygen and Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Generate Doxygen Documentation
+        run: doxygen Doxyfile
+
+      - name: Prepare site for deployment
+        run: |
+          mkdir -p _site
+          # Copy your new custom landing page to be the site's root index.html
+          cp docs/index.html _site/index.html
+          # Move the generated doxygen files into the 'reference' subdirectory
+          mv doxygen-html _site/reference
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # All files from the staging directory will be uploaded
+          path: './_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
