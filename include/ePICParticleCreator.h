@@ -137,7 +137,68 @@ namespace rad{
 	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::ParticleMCMatched(10,%s,B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
-     
+      
+      void ZDCLambda(const std::string name="lambda"){
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.x","ZDC_px");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.y","ZDC_py");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.z","ZDC_pz");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.x","ZDC_px");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.y","ZDC_py");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.PDG","ZDC_pdg");
+	
+	Reaction()->Define(Rec()+"ZDClambda",Form("rad::epic::Particle(ZDC_px,ZDC_py,ZDC_pz,1.1115683,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->AddParticleName(Rec()+"ZDClambda");
+
+      }
+      
+      //to do - swap above functions to call this one
+      //and check for bugs
+      void DetectorParticle(const std::string name, const std::string branchname, const std::string aliasname, const double mass){
+	std::string smass = to_string(mass);
+	
+	Reaction()->setBranchAlias(branchname+".momentum.x",aliasname+"_px");
+	Reaction()->setBranchAlias(branchname+".momentum.y",aliasname+"_py");
+	Reaction()->setBranchAlias(branchname+".momentum.z",aliasname+"_pz");
+	
+	Reaction()->Define(Rec()+aliasname,Form("rad::epic::Particle(%s_px,%s_py,%s_pz,%s,%spx,%spy,%spz,%sm,{0}",aliasname.data(),aliasname.data(),aliasname.data(),smass.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->AddParticleName(Rec()+aliasname);
+	
+      }
+
+
+      /////////////////////
+      //MC Matched Functions
+      void MCMatchedParticle(const std::string name, const std::string matchname, const std::string branchname, const std::string aliasname, const double mass, const double thresh){
+	
+	std::string smass = to_string(mass);
+	std::string sthresh = to_string(thresh);
+	
+	Reaction()->setBranchAlias(branchname+".momentum.x",aliasname+"_px");
+	Reaction()->setBranchAlias(branchname+".momentum.y",aliasname+"_py");
+	Reaction()->setBranchAlias(branchname+".momentum.z",aliasname+"_pz");
+	
+	//to do - string utility to replace form
+	//make function
+	Reaction()->Define(Rec()+name,Form("rad::epic::ParticleMCMatched(%s,%s,%s_px,%s_py,%s_pz,%s,%spx,%spy,%spz,%sm,%s)",sthresh.data(),matchname.data(),aliasname.data(),aliasname.data(),aliasname.data(),smass.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
+	Reaction()->AddParticleName(Rec()+name);
+      }
+      
+      void MCMatchedLowQ2Electron() {
+	MCMatchedParticle(rad::names::ScatEle(), rad::names::ScatEle(), "TaggerTrackerTracks", "tagger", rad::constant::M_ele(), 0.1);
+      }
+      
+      void MCMatchedRomanPotProton(const std::string matchname="pprime") {
+	MCMatchedParticle("RPproton", matchname, "ForwardRomanPotRecParticles", "rp", rad::constant::M_pro(), 10);
+      }
+      
+      void MCMatchedB0Proton(const std::string matchname="pprime") {
+	MCMatchedParticle("B0proton", matchname, "ReconstructedTruthSeededChargedParticles", "B0", rad::constant::M_pro(), 10);
+      }
+      
+      void MCMatchedZDCLambda(const std::string matchname="lambda"){
+	MCMatchedParticle("ZDClambda", matchname, "ReconstructedFarForwardZDCLambdas", "ZDC", rad::constant::M_Lambda(), 10);
+      }
+      
       void MCMatchedFarForwardProton(const std::string name="pprime") {
 	MCMatchedRomanPotProton(name);
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.x","B0_px");
