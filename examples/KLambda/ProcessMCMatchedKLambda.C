@@ -1,10 +1,8 @@
-//need to use reconstructed variables for all particles
-//rather than set index by number, need to use lambda method like is done for positron.
-
 #include "ePICReaction.h"
 #include "ParticleCreator.h"
-#include "ePICParticleModifier.h"
 #include "ePICParticleCreator.h"
+#include "ParticleModifier.h"
+#include "ePICParticleModifier.h"
 #include "Indicing.h"
 #include "Histogrammer.h"
 #include "BasicKinematicsRDF.h"
@@ -15,71 +13,95 @@
 #include <TCanvas.h>
 #include <TMath.h>
 
-void ProcessMCMatchedY(){
+// Run shell command and capture output
+std::vector<std::string> runCommand(const std::string& cmd) {
+    std::vector<std::string> lines;
+    FILE* pipe = gSystem->OpenPipe(cmd.c_str(), "r");
+    if (!pipe) {
+        std::cerr << "Error: cannot run command " << cmd << std::endl;
+        return lines;
+    }
+    char buffer[1024];
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        std::string line(buffer);
+        line.erase(line.find_last_not_of(" \n\r\t") + 1); // trim whitespace
+        if (!line.empty()) lines.push_back(line);
+    }
+    gSystem->ClosePipe(pipe);
+    return lines;
+}
+
+// Return list of ROOT files from XRootD directory
+std::vector<std::string> GetXRootDFiles(const char* redirector,
+                                        const char* xrdfsPath,
+					const char* extension = "edm4eic.root",
+					int maxFiles = -1) {
+    std::ostringstream cmd;
+    cmd << "xrdfs " << redirector << " ls " << xrdfsPath;
+    auto files = runCommand(cmd.str());
+    
+     // Sort to make sure 0001, 0002, ... order
+    std::sort(files.begin(), files.end());
+    
+    std::vector<std::string> filelist;
+    for (auto& f : files) {
+        if (TString(f).EndsWith(extension)) {
+            filelist.push_back("root://" + std::string(redirector) + f);
+	     if (maxFiles > 0 && (int)filelist.size() >= maxFiles) break;
+	}
+    }
+    
+    if (filelist.empty()) {
+        std::cerr << "Warning: No " << extension
+                  << " files found under " << xrdfsPath << std::endl;
+    }
+
+    return filelist;
+}
+void ProcessMCMatchedKLambda(std::string infile="/w/work0/home/rachel/TDISEIC/data/reco/k_lambda_18x275_5000evt_001.edm4eic.root", const std::string outfile="/w/work5/home/garyp/rad_trees/MCMatched_KLambda_18x275.root"){
   using namespace rad::names::data_type; //for Rec(), Truth()
+  ROOT::EnableImplicitMT(8);
   
   gBenchmark->Start("df total");
-  
-  rad::config::ePICReaction epic{"events","/w/work5/home/garyp/eic/Farm/Y4260/recon/*.root"};
+  infile="root://dtn-eic.jlab.org//volatile/eic/romanov/meson-structure-2025-08/reco/18x275/k_lambda_18x275_5000evt_2000.edm4eic.root";
+  auto files = GetXRootDFiles("dtn-eic.jlab.org/","/volatile/eic/romanov/meson-structure-2025-08/reco/18x275/","edm4eic.root",-1);
+  for(auto file : files)
+    std::cout << file << std::endl;
+  rad::config::ePICReaction epic{"events",files};
   epic.SetBeamsFromMC(); //for this file 0=ebeam 1=pbeam
   
-  //epic.AliasColumns();
-  //epic.AliasMC();
-  //epic.AliasColumnsAndMC();
   epic.AliasColumnsAndMatchWithMC();
   
+  //rad::indice::UseAsID(index, offset) offset in case beam particle included in record
   epic.setScatElectron(rad::indice::UseAsID(0,2), {"MCScatteredElectrons_objIdx.index"});
-  epic.setParticleIndex("pprime",rad::indice::UseAsID(0,2),{"MCScatteredProtons_objIdx.index"},2212);
+  //epic.setParticleIndex("pprime",rad::indice::UseAsID(0,2),{"MCScatteredProtons_objIdx.index"},2212);
 
+  
+  //particle creator
+  rad::epic::ePICParticleCreator epic_particles{epic};
+  rad::epic::ePICParticleModifier  epic_modifier(epic);
+  
+  //Lambda^0_s
+  epic.setParticleIndex("Lambda",2,3122);
+  epic_particles.MCMatchedZDCLambda("Lambda");
+  //K^+ tagged meson - becomes inclusive missing X
+  epic.setParticleIndex("K",1,321);
+  
+  epic.Particles().Miss("missX",{rad::names::ScatEle().data(),"Lambda"});
+  
+  epic.setMesonParticles({"missX"});
+  epic.setBaryonParticles({"Lambda"});
  
-  epic.setParticleIndex("pim",2,-211);
-  epic.setParticleIndex("pip",3,211);
-  
-  epic.setParticleIndex("ele",4,11);
-  epic.setParticleIndex("pos",5,-11);
-  
-  ////////////////////////////////////////////////
-  /// Create and Modify reconstructed 4-vectors
-  ////////////////////////////////////////////////
-  rad::epic::ePICParticleModifier p_modifier(epic);
-  rad::epic::ePICParticleCreator  p_creator(epic);
-  
-  //recoil proton (the baryon)
-  p_creator.MCMatchedFarForwardProton();
-  
-  //create J/psi from e+ e-
-  p_creator.Sum("Jpsi",{"ele","pos"});
-  //Fix the 4-vector mass to PDG value
-  p_modifier.FixMassTo("Jpsi",3.0969000);
-  p_modifier.Apply("JpsiMass");
-
-  //create Y from J/psi pi+ pi-
-  p_creator.Sum("Y",{"pim","pip","Jpsi"});
-  
-  epic.setMesonParticles({"Jpsi","pip","pim"});
-  
-  //create recoil proton from missing 4-vector, e-' and Y
-  p_creator.Miss("calc_pprime",{rad::names::ScatEle().data(),"Y"});
-  //fix its mass to PDG mass
-  p_modifier.FixMassTo("calc_pprime",0.93956540);//
-  p_modifier.Apply("pprimeMass");
-
-  //set this if not detecting proton
-  // i.e. semi inclusive measurement
-  //epic.setBaryonParticles({"calc_pprime"});
-  
- 
-  //set this if we are goign to detect the proton directly
-  epic.setBaryonParticles({"pprime"});
-  
-  
   //must call this after all particles are configured
   epic.makeParticleMap();
+  
+  epic_modifier.UndoCrossAngle("Lambda");
+  epic_modifier.Apply("LambdaCrossAngle");
   
   //option filtering of reconstructed tracks
   //epic.Filter("el_OK==1&&po_OK==1","partFilter");
   //epic.Filter("rec_pmag[scat_ele]>0.1","pmag_scat_ele_filt");
-  //epic.Filter("rec_pmag[pprime]>0.1","pmag_pprime_filt");
+  //epic.Filter("rec_pmag[Lambda]>0.1","pmag_Lambda_filt");
   
   //////////////////////////////////////////////////////////
   // Now define calculated variables
@@ -89,10 +111,7 @@ void ProcessMCMatchedY(){
 
   //masses column name, {+ve particles}, {-ve particles}
   rad::rdf::MissMass(epic,"Welec","{scat_ele}");
-  rad::rdf::Mass(epic,"Whad","{Y,pprime}");
-  rad::rdf::Mass(epic,"JMass","{Jpsi}");
-  rad::rdf::Mass(epic,"YMass","{Y}");
-  rad::rdf::Mass(epic,"MissNMass","{calc_pprime}");
+  rad::rdf::Mass(epic,"Whad","{missX,Lambda}");
   rad::rdf::Q2(epic,"Q2");
 
   //t distribution, column name
@@ -105,15 +124,13 @@ void ProcessMCMatchedY(){
   rad::rdf::CMAngles(epic,"CM");
 
   //exlusivity
-  rad::rdf::MissMass2(epic,"MissMass2_Meson","{scat_ele,Y}");
-  rad::rdf::MissMass2(epic,"MissMass2","{scat_ele,pprime,Y}");
-  rad::rdf::MissP(epic,"MissP_Meson","{scat_ele,Y}");
-  rad::rdf::MissE(epic,"MissE_Meson","{scat_ele,Y}");
-  rad::rdf::MissPt(epic,"MissPt_Meson","{scat_ele,Y}");
-  rad::rdf::MissPz(epic,"MissPz_Meson","{scat_ele,Y}");
-  rad::rdf::MissTheta(epic,"MissTheta_Meson","{scat_ele,Y}");
+  rad::rdf::MissMass(epic,"MissMassX","{scat_ele,Lambda}");
+  rad::rdf::MissP(epic,"MissP_X","{scat_ele,K}");
+  rad::rdf::MissPt(epic,"MissPt_X","{scat_ele,K}");
+  rad::rdf::MissPz(epic,"MissPz_X","{scat_ele,K}");
+  rad::rdf::MissTheta(epic,"MissTheta_X","{scat_ele,K}");
 
- //decay angles
+  //decay angles
   rad::rdf::gn2s0s0s12::HelicityAngles(epic,"Heli");
 
   ///////////////////////////////////////////////////////////
@@ -128,12 +145,10 @@ void ProcessMCMatchedY(){
   //histo.Splitter().AddRegularDimension("xxx", rad::histo::RegularSplits(nbins,low,high) );
   histo.Init({Rec(),Truth()});//will create histograms for rec and truth
 
-  histo.Create<TH1D,double>({"hQ2",";Q^{2} [GeV^{2}]",100,0,2.},{"Q2"});
+  histo.Create<TH1D,double>({"hQ2",";Q^{2} [GeV^{2}]",100,0,500.},{"Q2"});
   histo.Create<TH1D,double>({"hWelec",";W (electro miss mass) [GeV/c^{2}]",100,0,200.},{"Welec"});
   histo.Create<TH1D,double>({"hWhad",";W (hadro final state) [GeV/c^{2}]",100,0,200.},{"Whad"});
-  histo.Create<TH1D,double>({"hJMass",";M(e-,e+) [GeV/c^{2}]",100,2.,5.},{"JMass"});
-  histo.Create<TH1D,double>({"hYMass",";M(e-,e+, #pi^{+},#pi^{-}) [GeV/c^{2}]",100,2.,5.},{"YMass"});
-  histo.Create<TH1D,double>({"hMissMass2",";M^{2}_{miss} [GeV/c^{2}]",200,-50,50},{"MissMass2"});
+  histo.Create<TH1D,double>({"hMissMassX",";M_{miss} [GeV/c^{2}]",1000,-200,200},{"MissMassX"});
   
   histo.Create<TH1D,double>({"httop",";t(top vertex) [GeV^{2}]",100,-1,5},{"t_top"});
   histo.Create<TH1D,double>({"htbot",";t(bottom vertex) [GeV^{2}]",100,-1,5},{"t_bot"});
@@ -142,15 +157,11 @@ void ProcessMCMatchedY(){
   
   histo.Create<TH1D,double>({"hcthCM",";cos(#theta_{CM})",100,-1,1},{"CM_CosTheta"});
   histo.Create<TH1D,double>({"hphCM",";#phi_{CM}",100,-TMath::Pi(),TMath::Pi()},{"CM_Phi"});
-  histo.Create<TH1D,double>({"hcthHeli",";cos(#theta_{hel})",100,-1,1},{"Heli_CosTheta"});
-  histo.Create<TH1D,double>({"hphHeli",";#phi_{hel}",100,-TMath::Pi(),TMath::Pi()},{"Heli_Phi"});
   
-  histo.Create<TH1D,double>({"hmissMassMeson2",";M^{2}_{miss} [GeV/c^{2}]",300,-150,150},{"MissMass2_Meson"});
-  histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',Y)",1000,250,350},{"MissP_Meson"});
-  histo.Create<TH1D,double>({"hmissE",";E_{miss}(e',Y)",1000,200,350},{"MissE_Meson"});
-  histo.Create<TH1D,double>({"hmissPt",";p_{t,miss}(e',Y)",100,0,10},{"MissPt_Meson"});
-  histo.Create<TH1D,double>({"hmissPz",";p_{z,miss}(e',Y)",1000,250,350},{"MissPz_Meson"});
-  histo.Create<TH1D,double>({"hmissTheta",";#theta_{miss}(e',Y)",100,-0.01*TMath::Pi(),0.01*TMath::Pi()},{"MissTheta_Meson"});
+  histo.Create<TH1D,double>({"hmissP",";p_{miss}(e',K)",1000,-100,100},{"MissP_X"});
+  histo.Create<TH1D,double>({"hmissPt",";p_{t,miss}(e',K)",100,0,10},{"MissPt_X"});
+  histo.Create<TH1D,double>({"hmissPz",";p_{z,miss}(e',K)",1000,-100,100},{"MissPz_X"});
+  histo.Create<TH1D,double>({"hmissTheta",";#theta_{miss}(e',K)",100,-TMath::Pi(),TMath::Pi()},{"MissTheta_X"});
  
   //particle momenta
   histo.Create<TH1D,double>({"hpmag_elec",";p_{e'} [GeV/c]",100,-1,20},{"pmag[scat_ele]"});
@@ -158,17 +169,17 @@ void ProcessMCMatchedY(){
   histo.Create<TH1D,double>({"htheta_elec",";#theta_{e'} [rad]",100,-TMath::Pi(),TMath::Pi()},{"theta[scat_ele]"});
   histo.Create<TH1D,double>({"hphi_elec",";#phi_{e'} [rad]",100,-TMath::Pi(),TMath::Pi()},{"phi[scat_ele]"});
   
-  histo.Create<TH1D,double>({"hpmag_pprime",";p_{p'} [GeV/c]",100,-1,300},{"pmag[pprime]"});
-  histo.Create<TH1D,double>({"heta_pprime",";#eta_{p'} ",100,-10,10},{"eta[pprime]"});
-  histo.Create<TH1D,double>({"htheta_pprime",";#theta_{p'} [rad]",1000,0,1},{"theta[pprime]"});
-  histo.Create<TH1D,double>({"hphi_pprime",";#phi_{p'} [rad]",100,-TMath::Pi(),TMath::Pi()},{"phi[pprime]"});
+  histo.Create<TH1D,double>({"hpmag_Lambda",";p_{p'} [GeV/c]",100,-1,300},{"pmag[Lambda]"});
+  histo.Create<TH1D,double>({"heta_Lambda",";#eta_{p'} ",100,-10,10},{"eta[Lambda]"});
+  histo.Create<TH1D,double>({"htheta_Lambda",";#theta_{p'} [rad]",1000,0,1},{"theta[Lambda]"});
+  histo.Create<TH1D,double>({"hphi_Lambda",";#phi_{p'} [rad]",100,-TMath::Pi(),TMath::Pi()},{"phi[Lambda]"});
   
   //finally, book lazy snapshot before processing
   //benchmark here will be zero if lazy snapshot
   //which now works and will be booked till trigger
   gBenchmark->Start("snapshot");
-  epic.BookLazySnapshot("MCMatchedY.root");
-  //epic.Snapshot("MCMatchedY.root");
+  epic.BookLazySnapshot(outfile);
+  //epic.Snapshot("MCMatchedKLambda.root");
   gBenchmark->Stop("snapshot");
   gBenchmark->Print("snapshot");
 
@@ -179,7 +190,7 @@ void ProcessMCMatchedY(){
   
   
   TCanvas *c00 = new TCanvas();
-  c00->Divide(3,2);
+  c00->Divide(2,2);
   c00->cd(1)->SetLogy();
   histo.DrawSame("hQ2",gPad);
   c00->cd(2)->SetLogy();
@@ -187,11 +198,7 @@ void ProcessMCMatchedY(){
   c00->cd(3)->SetLogy();
   histo.DrawSame("hWhad",gPad);
   c00->cd(4)->SetLogy();
-  histo.DrawSame("hJMass",gPad);
-  c00->cd(5)->SetLogy();
-  histo.DrawSame("hYMass",gPad);
-  c00->cd(6)->SetLogy();
-  histo.DrawSame("hMissMass2",gPad);
+  histo.DrawSame("hMissMassX",gPad);
 
   TCanvas *c01 = new TCanvas();
   c01->Divide(2,2);
@@ -211,9 +218,9 @@ void ProcessMCMatchedY(){
   c02->cd(2)->SetLogy();
   histo.DrawSame("hmissPt",gPad);
   c02->cd(3)->SetLogy();
-  histo.DrawSame("hmissMassMeson2",gPad);
+  histo.DrawSame("hmissPz",gPad);
   c02->cd(4)->SetLogy();
-  histo.DrawSame("hmissE",gPad);
+  histo.DrawSame("hmissTheta",gPad);
   
   //reco elec kin
   TCanvas *c03 = new TCanvas();
@@ -231,19 +238,19 @@ void ProcessMCMatchedY(){
   TCanvas *c04 = new TCanvas();
   c04->Divide(2,2);
   c04->cd(1)->SetLogy();
-  histo.DrawSame("hpmag_pprime",gPad);
+  histo.DrawSame("hpmag_Lambda",gPad);
   c04->cd(2)->SetLogy();
-  histo.DrawSame("heta_pprime",gPad);
+  histo.DrawSame("heta_Lambda",gPad);
   c04->cd(3)->SetLogy();
-  histo.DrawSame("htheta_pprime",gPad);
+  histo.DrawSame("htheta_Lambda",gPad);
   c04->cd(4)->SetLogy();
-  histo.DrawSame("hphi_pprime",gPad);
+  histo.DrawSame("hphi_Lambda",gPad);
   
   gBenchmark->Stop("processing");
   gBenchmark->Print("processing");
 
   //save all histograms to file
-  histo.File("MCMatchedY_hists.root");
+  //histo.File("MCMatchedKLambda_hists.root");
 
   gBenchmark->Stop("df total");
   gBenchmark->Print("df total");
