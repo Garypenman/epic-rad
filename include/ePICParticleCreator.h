@@ -108,6 +108,9 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.x","ZDC_px");
 	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.y","ZDC_py");
 	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.z","ZDC_pz");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.x","ZDC_px");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.y","ZDC_py");
+	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.PDG","ZDC_pdg");
 	
 	Reaction()->Define(Rec()+"ZDClambda",Form("rad::epic::Particle(ZDC_px,ZDC_py,ZDC_pz,1.1115683,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
 	Reaction()->AddParticleName(Rec()+"ZDClambda");
