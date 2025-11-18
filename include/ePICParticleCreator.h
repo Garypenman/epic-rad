@@ -16,26 +16,37 @@ namespace rad{
     /// p4 is the beam particle vector
     /// iafter is to keep the prototype of other particle adding
     /// functions which depend on other particles
-    template<typename Tp, typename Tm>
-      int Particle(const RVec<Tp> &tpx, const  RVec<Tp> &tpy, const  RVec<Tp> &tpz, const RVec<Tm> &tmass, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m,const RVecI& iafter){
+    template<typename Tp, typename Tm, typename Tpdg>
+      int Particle(const RVec<Tp> &tpx, const  RVec<Tp> &tpy, const  RVec<Tp> &tpz, const RVec<Tm> &tmass, const RVec<Tpdg> tpdg, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tp> &m, RVec<Tpdg> &pdg, const RVecI& iafter){
       
       //std::cout<<"ParticleFixedBeam "<< px.size()<<m<<m.size()<<std::endl;
       UInt_t entry = 0;
       auto idx = px.size();
       if(tpx.empty()==false){
 	//add new components
-	px.push_back(tpx[entry]);
-	py.push_back(tpy[entry]);
-	pz.push_back(tpz[entry]);
-	m.push_back(tmass[entry]);
-	//m.push_back(0.00051099900);
+	/* px.push_back(tpx[entry]); */
+	/* py.push_back(tpy[entry]); */
+	/* pz.push_back(tpz[entry]); */
+	/* m.push_back(tmass[entry]); */
+	/* pdg.push_back(tpdg[entry]); */
+	px = (tpx[entry]);
+	py = (tpy[entry]);
+	pz = (tpz[entry]);
+	m = (tmass[entry]);
+	pdg = (tpdg[entry]);
+	
       }
       else{
-	px.push_back(0.);
-	py.push_back(0.);
-	pz.push_back(0.);
-	m.push_back(0.);
-	//m.push_back(0.00051099900);
+	/* px.push_back(0.); */
+	/* py.push_back(0.); */
+	/* pz.push_back(0.); */
+	/* m.push_back(0.); */
+	px = (0.);
+	py = (0.);
+	pz = (0.);
+	m = (0.);
+	pdg = (0.);
+	
       }
       return idx;
     }
@@ -107,21 +118,15 @@ namespace rad{
 	Reaction()->AddParticleName(Rec()+"B0proton");
       }
       
-      void ZDCLambda(const std::string name="lambda"){
-	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.x","ZDC_px");
-	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.y","ZDC_py");
-	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.z","ZDC_pz");
-	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.x","ZDC_px");
-	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.momentum.y","ZDC_py");
-	Reaction()->setBranchAlias("ReconstructedFarForwardZDCLambdas.PDG","ZDC_pdg");
-	
-	Reaction()->Define(Rec()+"ZDClambda",Form("rad::epic::Particle(ZDC_px,ZDC_py,ZDC_pz,1.1115683,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
-	Reaction()->AddParticleName(Rec()+"ZDClambda");
-
+      void FarForwardProton(const std::string name="pprime"){
+	RomanPotProton(name);
+	B0Proton(name);
       }
       
-      //to do - swap above functions to call this one
-      //and check for bugs
+      void ZDCLambda(const std::string name="lambda"){
+	DetectorParticle(name,"ReconstructedFarForwardZDCLambdas","ZDC",rad::constant::M_Lambda());
+      }
+      
       void DetectorParticle(const std::string name, const std::string branchname, const std::string aliasname, const double mass){
 	std::string smass = to_string(mass);
 	
@@ -129,10 +134,10 @@ namespace rad{
 	Reaction()->setBranchAlias(branchname+".momentum.y",aliasname+"_py");
 	Reaction()->setBranchAlias(branchname+".momentum.z",aliasname+"_pz");
 	Reaction()->setBranchAlias(branchname+".mass",aliasname+"_m");
+	Reaction()->setBranchAlias(branchname+".PDG",aliasname+"_pdg");
 	
-	//Reaction()->Define(Rec()+aliasname,Form("rad::epic::Particle(%s_px,%s_py,%s_pz,%s,%spx,%spy,%spz,%sm,{0}",aliasname.data(),aliasname.data(),aliasname.data(),smass.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
-	Reaction()->Define(Rec()+aliasname,Form("rad::epic::Particle(%s_px,%s_py,%s_pz,%s_m,%spx,%spy,%spz,%sm,{0}",aliasname.data(),aliasname.data(),aliasname.data(),aliasname.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
-	Reaction()->AddParticleName(Rec()+aliasname);
+	Reaction()->Define(Rec()+name,Form("rad::epic::Particle(%s_px,%s_py,%s_pz,%s_m,%spx,%spy,%spz,%sm,,%spdg,{0}",aliasname.data(),aliasname.data(),aliasname.data(),aliasname.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->AddParticleName(Rec()+name);
 	
       }
 
