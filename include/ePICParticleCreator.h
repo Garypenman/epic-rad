@@ -41,7 +41,7 @@ namespace rad{
 	py.push_back(0.);
 	pz.push_back(0.);
 	m.push_back(0.);
-	pdg.push_back(0.);
+	pdg.push_back(rad::constant::InvalidEntry<int>());
 	/* px[idx] = (0.); */
  	/* py[idx] = (0.); */
 	/* pz[idx] = (0.); */
@@ -95,34 +95,26 @@ namespace rad{
 	DetectorParticle(rad::names::ScatEle(), "TaggerTrackerTracks","tagger",rad::constant::M_ele());
       }
       
-      void RomanPotProton(const std::string name="pprime") {
+      void RomanPotProton(const std::string name="RPproton") {
 	DetectorParticle(name, "ForwardRomanPotRecParticles","rp",rad::constant::M_pro());
       }
       
-      void B0Proton(const std::string name="pprime"){
-	//DetectorParticle(name, "ReconstructedTruthSeededChargedParticles","B0",rad::constant::M_pro());
-	
-	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.x","B0_px");
-	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
-	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
-	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.mass","B0_m");
-	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.PDG","B0_pdg");
-	
-	/* Reaction()->Define(Rec()+"B0proton",Form("rad::epic::Particle(B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data())); */
-	/* Reaction()->AddParticleName(Rec()+"B0proton"); */
-	/* Reaction()->Define(Rec()+"B0Proton",Form("if(rec_%s==-1) return rad::epic::Particle(%s,B0_px,B0_py,B0_pz,B0_m,B0_pdg,%spx,%spy,%spz,%sm,%spid,{0})",name.data(),name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data())); */
-	/* Reaction()->AddParticleName(Rec()+"B0Proton"); */
-	
-      }
+      void B0Proton(const std::string name="B0proton"){
+	DetectorParticle(name, "ReconstructedTruthSeededChargedParticles","B0",rad::constant::M_pro());
+        }
       
-      void FarForwardProton(const std::string name="pprime"){
-	RomanPotProton(name);
-	B0Proton(name);
-	/* Reaction()->Define(Rec()+"B0proton",Form("rad::epic::Particle(B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data())); */
-	/* Reaction()->AddParticleName(Rec()+"B0proton"); */
-      }
+      //dont use this like this
+      //cleaner to get seperate RP and B0 particles out of the detectors
+      //then choose what to do with them after particle map
+      //i.e. Overwrite(pprime,RPproton) etc.
+      /* void FarForwardProton(const std::string name="pprime"){ */
+      /* 	RomanPotProton(name); */
+      /* 	B0Proton(name); */
+      /* 	/\* Reaction()->Define(Rec()+"B0proton",Form("rad::epic::Particle(B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data())); *\/ */
+      /* 	/\* Reaction()->AddParticleName(Rec()+"B0proton"); *\/ */
+      /* } */
       
-      void ZDCLambda(const std::string name="lambda"){
+      void ZDCLambda(const std::string name="ZDClambda"){
 	DetectorParticle(name,"ReconstructedFarForwardZDCLambdas","ZDC",rad::constant::M_Lambda());
       }
       
@@ -182,7 +174,6 @@ namespace rad{
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.mass","B0_m");
-	
 	//to do - make this work with the new MCMatchedParticle intermediate function style above
 	//if RP exists use that
 	//if not consider B0 candidates
