@@ -24,28 +24,29 @@ namespace rad{
       auto idx = px.size();
       if(tpx.empty()==false){
 	//add new components
-	/* px.push_back(tpx[entry]); */
-	/* py.push_back(tpy[entry]); */
-	/* pz.push_back(tpz[entry]); */
-	/* m.push_back(tmass[entry]); */
-	/* pdg.push_back(tpdg[entry]); */
-	px = (tpx[entry]);
-	py = (tpy[entry]);
-	pz = (tpz[entry]);
-	m = (tmass[entry]);
-	pdg = (tpdg[entry]);
+	px.push_back(tpx[entry]);
+	py.push_back(tpy[entry]);
+	pz.push_back(tpz[entry]);
+	m.push_back(tmass[entry]);
+	pdg.push_back(tpdg[entry]);
+	/* px[idx] = (tpx[entry]); */
+	/* py[idx] = (tpy[entry]); */
+	/* pz[idx] = (tpz[entry]); */
+	/* m[idx] = (tmass[entry]); */
+	/* pdg[idx] = (tpdg[entry]); */
 	
       }
       else{
-	/* px.push_back(0.); */
-	/* py.push_back(0.); */
-	/* pz.push_back(0.); */
-	/* m.push_back(0.); */
-	px = (0.);
-	py = (0.);
-	pz = (0.);
-	m = (0.);
-	pdg = (0.);
+	px.push_back(0.);
+	py.push_back(0.);
+	pz.push_back(0.);
+	m.push_back(0.);
+	pdg.push_back(0.);
+	/* px[idx] = (0.); */
+ 	/* py[idx] = (0.); */
+	/* pz[idx] = (0.); */
+	/* m[idx] = (0.); */
+	/* pdg[idx] = (0.); */
 	
       }
       return idx;
@@ -91,36 +92,34 @@ namespace rad{
       
       //Detector functions (not mc matched)
       void LowQ2Electron() {
-	Reaction()->setBranchAlias("TaggerTrackerTracks.momentum.x","tagger_px");
-	Reaction()->setBranchAlias("TaggerTrackerTracks.momentum.y","tagger_py");
-	Reaction()->setBranchAlias("TaggerTrackerTracks.momentum.z","tagger_pz");
-	
-	Reaction()->Define(Rec()+rad::names::ScatEle(),Form("rad::epic::Particle(tagger_px,tagger_py,tagger_pz,0.00051099900,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
-	Reaction()->AddParticleName(Rec()+rad::names::ScatEle());
-
+	DetectorParticle(rad::names::ScatEle(), "TaggerTrackerTracks","tagger",rad::constant::M_ele());
       }
       
       void RomanPotProton(const std::string name="pprime") {
-	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.x","rp_px");
-	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.y","rp_py");
-	Reaction()->setBranchAlias("ForwardRomanPotRecParticles.momentum.z","rp_pz");
-	
-	Reaction()->Define(Rec()+name,Form("rad::epic::Particle(rp_px,rp_py,rp_pz,0.93827208943,%spx,%spy,%spz,%sm,%s)",Rec().data(),Rec().data(),Rec().data(),Rec().data(),(Truth()+"match_id").data()));
-	Reaction()->AddParticleName(Rec()+name);
+	DetectorParticle(name, "ForwardRomanPotRecParticles","rp",rad::constant::M_pro());
       }
       
       void B0Proton(const std::string name="pprime"){
+	//DetectorParticle(name, "ReconstructedTruthSeededChargedParticles","B0",rad::constant::M_pro());
+	
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.x","B0_px");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.y","B0_py");
 	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.momentum.z","B0_pz");
+	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.mass","B0_m");
+	Reaction()->setBranchAlias("ReconstructedTruthSeededChargedParticles.PDG","B0_pdg");
 	
-	Reaction()->Define(Rec()+"B0proton",Form("rad::epic::Particle(B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
-	Reaction()->AddParticleName(Rec()+"B0proton");
+	/* Reaction()->Define(Rec()+"B0proton",Form("rad::epic::Particle(B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data())); */
+	/* Reaction()->AddParticleName(Rec()+"B0proton"); */
+	/* Reaction()->Define(Rec()+"B0Proton",Form("if(rec_%s==-1) return rad::epic::Particle(%s,B0_px,B0_py,B0_pz,B0_m,B0_pdg,%spx,%spy,%spz,%sm,%spid,{0})",name.data(),name.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data())); */
+	/* Reaction()->AddParticleName(Rec()+"B0Proton"); */
+	
       }
       
       void FarForwardProton(const std::string name="pprime"){
 	RomanPotProton(name);
 	B0Proton(name);
+	/* Reaction()->Define(Rec()+"B0proton",Form("rad::epic::Particle(B0_px,B0_py,B0_pz,0.93827208943,%spx,%spy,%spz,%sm,{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data())); */
+	/* Reaction()->AddParticleName(Rec()+"B0proton"); */
       }
       
       void ZDCLambda(const std::string name="lambda"){
@@ -136,7 +135,7 @@ namespace rad{
 	Reaction()->setBranchAlias(branchname+".mass",aliasname+"_m");
 	Reaction()->setBranchAlias(branchname+".PDG",aliasname+"_pdg");
 	
-	Reaction()->Define(Rec()+name,Form("rad::epic::Particle(%s_px,%s_py,%s_pz,%s_m,%spx,%spy,%spz,%sm,,%spdg,{0}",aliasname.data(),aliasname.data(),aliasname.data(),aliasname.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
+	Reaction()->Define(Rec()+name,Form("rad::epic::Particle(%s_px,%s_py,%s_pz,%s_m,%s_pdg,%spx,%spy,%spz,%sm,%spid,{0})",aliasname.data(),aliasname.data(),aliasname.data(),aliasname.data(),aliasname.data(),Rec().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
 	Reaction()->AddParticleName(Rec()+name);
 	
       }
